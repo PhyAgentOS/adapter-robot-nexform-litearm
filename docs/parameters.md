@@ -29,11 +29,12 @@
 | 单位 | rad | ✅ | URDF / MJCF `angle="radian"` |
 | 限位 | 见 `docs/joint_table.md` | ✅ | URDF = MJCF（2026-11-05 起） |
 | 速度上限（标称） | 1 rad/s（全关节） | 📌 | URDF `velocity="1"` |
-| 零位 | URDF/MJCF `q=0`；SDK `home()` 0x2A 回 `[0]*7` | 📌 | SDK 文档 |
-| 正方向 | 逐关节 `+1`（待真机逐关节确认） | ⬜ | 阶段 2：上位机方向检测 |
-| 固件软限位 | 固件实际 clamp 值 | ⬜ | 阶段 1：参数读回 |
-| `following_error` 阈值 | — | ⬜ | 阶段 1：参数读回 |
+| 零位 | URDF/MJCF `q=0`；SDK `home()` 0x2A 回 `[0]*7` | 📌 | SDK 文档；2026-11-05 固件 FK 与 URDF FK 在实测 `q` 下吻合，见 `joint_table.md` §3.1 |
+| 正方向 | 逐关节 `+1` | 📌 | 同次 FK 对拍一致；上位机逐关节方向检测待阶段 2 |
+| 固件软限位 | 逐关节值与 URDF 内缩 1° 一致 | ✅ | 2026-11-05 `Arm.params.all_joint_params()`，见 `joint_table.md` §2.1 |
+| `following_error` 阈值 | J1–J2 0.35 / J3–J4 0.30 / J5–J7 0.25 rad | 📌 | 固件 `params/defaults.c` + `tools/PARAM_STATE.md`（1.10.0 源码）；1.11.0 无读回命令，未实机复核 |
 | `speed` 归一化 → 实际角速度 | SDK 侧 0..1 | ⬜ | 阶段 2：实测 |
+| 未使能越限容差 | `POS_RECOVER_BAND = 0.05 rad`；越界 ≤0.05 不锁存，使能时受控回程 | 📌 | 固件 1.10.0 `safety/safety_check.c`；1.11.0 同行为待源码核对 |
 
 连接：USB CDC `1d50:606f`，`port: null` 时由 SDK 自动发现串口。
 
@@ -43,7 +44,7 @@
 |---|---|---|
 | 版本前缀 | `Litearm` | ✅ |
 | 最低版本 | `1.5.0`（SDK 常量 `MIN_FW`） | ✅ |
-| 实机版本 | — | ⬜ 阶段 1（`Arm.firmware`） |
+| 实机版本 | `Litearm1.11.0-7J` | ✅ 2026-11-05 `Arm.firmware`；本机固件源码仓最高只到 1.10.0，1.11.0 源码未归档 |
 
 ## 4. 夹爪（LiteGrip）
 
@@ -63,6 +64,7 @@
 | 标定文件 | `src/litegrip/factory_calibration.json`，md5 `1a9beb55f629a745568b44f31601a280` | ✅ | litegrip-python `v1.2.1` |
 | 标定加载 | `load_calibration()` 无参 → factory；`LITEGRIP_CALIB` 可覆盖 | ✅ | SDK 源码 |
 | TCP 偏移 / `payload` | — | ⬜ | 阶段 3 |
+| 空闲状态读回 | 被动连接成功；未使能时 3 s 内 can0 无任何报文，`get_state()` 返回 `fresh=False` | ⬜ | 2026-11-05 实测；需使能后才有反馈，待逐次批准 |
 
 ## 5. VR 遥操
 
@@ -77,11 +79,11 @@
 
 ## 6. 阶段 1 待读清单
 
-- [ ] `Arm.firmware` 实际版本
-- [ ] 逐关节固件软限位
-- [ ] `following_error` 阈值
-- [ ] `home()` 前/后的 `q` 回读（零位对照）
-- [ ] 夹爪 `position_mm` / `force_n` / 温度 / `error_code`
+- [x] `Arm.firmware` 实际版本：`Litearm1.11.0-7J`
+- [x] 逐关节固件软限位：`arm.params.all_joint_params()`，2026-11-05
+- [ ] `following_error` 阈值：SDK 无读回命令，暂用固件源码值（见 §2）
+- [ ] `home()` 前/后的 `q` 回读（零位对照）：`home()` 是运动，需单独批准
+- [ ] 夹爪 `position_mm` / `force_n` / 温度 / `error_code`：需 `enable()` 后才有反馈，需批准
 
 ## 7. 变更记录
 
@@ -89,3 +91,4 @@
 |---|---|
 | 2026-11-05 | 建立本表；录入 SDK 版本、固件最低版本、夹爪标定与总线参数 |
 | 2026-11-05 | 由 URDF 反推 MDH 并完成随机 FK 对拍（`docs/mdh.md`）；MDH 状态改为已确认 |
+| 2026-11-05 | 真机只读：固件 1.11.0-7J、软限位、`kp/kd/tau_max`、静止 `q`；J4/J5 越软限位定位为未使能自然平衡点（`POS_RECOVER_BAND`） |

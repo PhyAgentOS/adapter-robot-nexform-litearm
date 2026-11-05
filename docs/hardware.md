@@ -20,7 +20,7 @@
 | 工具法兰 / TCP | 部分 | SDK `v1.3.0` 提供 `set_tcp_offset`；当前 VR t_ee=0，待实测 |
 | 外参/手眼标定 | 外部 | 由独立标定工程提供，不在本仓；结果写入 `config/calibration/` |
 | VR 参数（MDH/rotation/scale/t_ee） | 部分 | `config/vr.example.yaml`；MDH 已由 URDF 反推（`docs/mdh.md`），t_ee 待实测 |
-| SDK/固件/系统版本 | 有 | SDK 版本与固件最低版本见 `docs/parameters.md`；实机固件版本待阶段 1 回读 |
+| SDK/固件/系统版本 | 有 | SDK 版本与固件最低版本见 `docs/parameters.md`；实机 `Litearm1.11.0-7J`（2026-11-05 读回） |
 | 夹爪总线 | 有 | `can0`，1 Mbit/s，`can_id=0x08`，`mst_id=0x18` |
 
 ## 急停

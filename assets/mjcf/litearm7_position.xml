@@ -1,0 +1,102 @@
+<!-- litearm7_position.xml — 与 litearm7.xml 同一运动学/惯量模型，只把执行器换成
+     `position`（kp/kv 取固件实测增益），并给各 body 打开 gravcomp 以对应固件的
+     重力前馈。operator-simulator-mujoco 直接把目标角写入 `ctrl`，因此仿真
+     workflow 使用本文件；需要按固件力矩模型自行做 PD 的离线脚本仍用 litearm7.xml。
+     关节坐标、质量、惯量逐项对应 litearm7.xml；网格为原 STL 简化到 ~20k 面后的 OBJ。 -->
+<mujoco model="litearm7_position">
+  <compiler angle="radian" autolimits="true" />
+  <option timestep="0.002" gravity="0 0 -9.81" />
+  <default>
+    <joint limited="true" damping="0.1" armature="0.01" />
+    <geom contype="0" conaffinity="0" condim="3" solimp="0.99 0.99 0.01" solref="0.02 1" />
+    <position ctrllimited="true" forcelimited="true" />
+  </default>
+  <asset>
+    <mesh name="base_link" file="meshes/base_link.obj" />
+    <mesh name="ee_link" file="meshes/ee_link.obj" />
+    <mesh name="joint1" file="meshes/joint1.obj" />
+    <mesh name="joint2" file="meshes/joint2.obj" />
+    <mesh name="joint3" file="meshes/joint3.obj" />
+    <mesh name="joint4" file="meshes/joint4.obj" />
+    <mesh name="joint5" file="meshes/joint5.obj" />
+    <mesh name="joint6" file="meshes/joint6.obj" />
+    <mesh name="joint7" file="meshes/joint7.obj" />
+    <material name="mat_link" rgba="0.75 0.78 0.82 1" />
+    <material name="mat_ee" rgba="0.9 0.5 0.2 1" />
+    <material name="mat_floor" rgba="0.4 0.4 0.4 1" />
+  </asset>
+  <worldbody>
+    <geom name="floor" type="plane" size="2 2 0.01" material="mat_floor" contype="1" conaffinity="1" />
+    <light name="light1" pos="2 2 3" directional="true" />
+    <light name="light2" pos="-2 -2 2" directional="true" />
+    <!-- base_link（固定） -->
+    <body name="base_link" gravcomp="1">
+      <inertial pos="2.81752472512e-05 -6.21980479291e-07 0.0355224094675" mass="0.364380717062648"
+                fullinertia="0.000273641151213 0.000251821003104 0.00037775932562 1.67098713948e-08 -1.09565994984e-08 -3.36863189944e-09" />
+      <geom name="base_link_vis" type="mesh" mesh="base_link" material="mat_link" />
+      <body name="joint1" pos="0 0 0.06975" quat="1 0 0 0" gravcomp="1">
+        <joint name="joint1" type="hinge" axis="0 0 1" range="-2.827 2.827" />
+        <inertial pos="-0.000193702794391 -0.000144114740922 0.0415560180015" mass="0.636061100335262"
+                  fullinertia="0.00055493590205 0.000356856391047 0.000409413887893 -4.51487655009e-08 -1.0199728042e-06 -1.95767398551e-06" />
+        <geom name="joint1_vis" type="mesh" mesh="joint1" material="mat_link" />
+        <body name="joint2" pos="0 0 0.0635" quat="0.499998163397 0.499999999997 -0.500001836603 -0.499999999997" gravcomp="1">
+          <joint name="joint2" type="hinge" axis="0 0 1" range="-1.745 1.745" />
+          <inertial pos="0.000109593690778 0.0650406262634 0.00200721976927" mass="0.296281105636482"
+                    fullinertia="0.000270936717143 0.000100407058034 0.000286852309424 -2.30306782741e-08 -2.70975700809e-07 -6.69931874728e-08" />
+          <geom name="joint2_vis" type="mesh" mesh="joint2" material="mat_link" />
+          <body name="joint3" pos="0 0.1135 0" quat="-2.59734346696e-06 -2.59735300756e-06 0.707108079855 0.707105482506" gravcomp="1">
+            <joint name="joint3" type="hinge" axis="0 0 1" range="-2.827 2.827" />
+            <inertial pos="0.015116311047 1.28732078291e-05 0.126779005395" mass="0.376902688786702"
+                      fullinertia="0.000376663293951 0.000430672465627 0.000111040747665 -1.4376802512e-06 -2.86088497692e-05 -1.30040412216e-06" />
+            <geom name="joint3_vis" type="mesh" mesh="joint3" material="mat_link" />
+            <body name="joint4" pos="0.038 0 0.186" quat="0.707105482511 0.707108079859 0 0" gravcomp="1">
+              <joint name="joint4" type="hinge" axis="0 0 1" range="-3.089 0.035" />
+              <inertial pos="-0.0309491778246 0.0463711873883 0.00157814188021" mass="0.285335817911565"
+                        fullinertia="0.000163897556025 0.000135611687203 0.000225975039727 5.04686660055e-05 5.37856557249e-07 -4.94793867316e-07" />
+              <geom name="joint4_vis" type="mesh" mesh="joint4" material="mat_link" />
+              <body name="joint5" pos="-0.038 0.08545 0" quat="-2.59734346696e-06 -2.59735300756e-06 0.707108079855 0.707105482506" gravcomp="1">
+                <joint name="joint5" type="hinge" axis="0 0 1" range="-2.827 2.827" />
+                <inertial pos="-1.76702794687e-05 0.00042651000505 0.095109835008" mass="0.352654558225702"
+                          fullinertia="0.000173929860876 0.000203095536622 7.25590513907e-05 -3.22310063328e-08 5.61419665918e-08 3.31113262928e-07" />
+                <geom name="joint5_vis" type="mesh" mesh="joint5" material="mat_link" />
+                <body name="joint6" pos="0 0 0.13705" quat="0.707105482511 0.707108079859 0 0" gravcomp="1">
+                  <joint name="joint6" type="hinge" axis="0 0 -1" range="-1.571 1.571" />
+                  <inertial pos="-0.000202518687183 0.0525238727977 0.00178388122861" mass="0.298759845757099"
+                            fullinertia="0.000327555222283 0.000173286577179 0.00031378344682 -1.39710589093e-05 1.17541296357e-06 1.33181143129e-05" />
+                  <geom name="joint6_vis" type="mesh" mesh="joint6" material="mat_link" />
+                  <body name="joint7" pos="0 0.074 0" quat="0.499998163397 0.499999999997 0.500001836603 0.499999999997" gravcomp="1">
+                    <joint name="joint7" type="hinge" axis="0 0 1" range="-1.571 1.571" />
+                    <inertial pos="0.0134504979693 -9.07149715247e-05 0.00199419237138" mass="0.152315157261345"
+                              fullinertia="4.49052523652e-05 4.43694914269e-05 6.7734811513e-05 7.06299437042e-08 2.88694676251e-07 -3.12258040604e-07" />
+                    <geom name="joint7_vis" type="mesh" mesh="joint7" material="mat_link" />
+                    <body name="ee_link" pos="0.05375 0 0" quat="0.707105482511 0 0.707108079859 0" gravcomp="1">
+                      <inertial pos="2.70261255596e-09 -4.63278928537e-10 -0.00350345068725" mass="0.0284157347604788"
+                                fullinertia="6.67966983468e-06 6.67966982268e-06 1.29103138361e-05 1.67474376585e-13 2.71971370018e-13 -3.38691299992e-13" />
+                      <geom name="ee_link_vis" type="mesh" mesh="ee_link" material="mat_ee" />
+                      <site name="tcp" type="sphere" size="0.008" pos="0 0 0" rgba="1 0 0 1" />
+                    </body>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+  <!-- kp 取固件实测（J1/J2 400，J3/J4 300，J5-J7 50），forcerange 取固件 tau_max。
+       kv 在固件 kd 的基础上提高：固件在 500 Hz 控制周期内闭环，而 MuJoCo 位置执行器
+       在此处是欠阻尼，J2 在 ±1.57 rad 附近会过冲；J1 仍按固件 kd 即可。 -->
+  <actuator>
+    <position name="motor1" joint="joint1" kp="400" kv="5" ctrlrange="-2.827 2.827" forcerange="-78 78" />
+    <position name="motor2" joint="joint2" kp="400" kv="30" ctrlrange="-1.745 1.745" forcerange="-78 78" />
+    <position name="motor3" joint="joint3" kp="300" kv="4" ctrlrange="-2.827 2.827" forcerange="-21 21" />
+    <position name="motor4" joint="joint4" kp="300" kv="5" ctrlrange="-3.089 0.035" forcerange="-21 21" />
+    <position name="motor5" joint="joint5" kp="50" kv="2.5" ctrlrange="-2.827 2.827" forcerange="-10 10" />
+    <position name="motor6" joint="joint6" kp="50" kv="2.5" ctrlrange="-1.571 1.571" forcerange="-10 10" />
+    <position name="motor7" joint="joint7" kp="50" kv="2.5" ctrlrange="-1.571 1.571" forcerange="-10 10" />
+  </actuator>
+  <keyframe>
+    <key name="home" qpos="0 0 0 0 0 0 0" />
+  </keyframe>
+</mujoco>

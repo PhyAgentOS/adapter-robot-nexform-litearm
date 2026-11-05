@@ -1,8 +1,9 @@
 # operator-simulator-mujoco 配置：LiteArm 7 轴
-# 模型直接使用本仓 assets/mjcf/scene.xml。
+# 模型用 position 执行器版本（scene_position.xml）；mujoco_sim 直接把目标角写入
+# ctrl，而 scene.xml 的执行器是力矩 motor，只适合自行做 PD 的离线脚本。
 # 需要 MUJOCO_GL=egl（无头）或 glfw（有显示）。
 
-model_path: ../../../assets/mjcf/scene.xml
+model_path: ../../../assets/mjcf/scene_position.xml
 control_hz: 50
 
 joints:
@@ -17,7 +18,7 @@ joints:
 robots:
   - id: robot_0
     joints: [joint1, joint2, joint3, joint4, joint5, joint6, joint7]
-    actuator_order: [joint1, joint2, joint3, joint4, joint5, joint6, joint7]
+    actuator_order: [motor1, motor2, motor3, motor4, motor5, motor6, motor7]
     joint_to_actuator:
       joint1: motor1
       joint2: motor2

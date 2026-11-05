@@ -44,6 +44,7 @@ class ArmLike(Protocol):
     def disable(self) -> None: ...
     def get_state(self, refresh: bool = False) -> Any: ...
     def movej_sync(self, q: list[float], speed: float = 1.0) -> Any: ...
+    def home(self, timeout: float | None = None) -> Any: ...
 
 
 class _CommandWorker:
@@ -193,6 +194,13 @@ class LitearmDriver(BaseRobotDriver):
         if self._arm is not None:
             self._arm.disable()
         logger.error("emergency stop: arm disabled")
+
+    def home(self, timeout: float | None = None) -> None:
+        """固件 `home()`（0x2A）回 URDF 零位，固件内固定 0.10 低速。"""
+        if not self._connected:
+            raise RuntimeError("robot is not connected")
+        self._arm.home(timeout=timeout)
+        self._target = dict(zip(ARM_JOINTS, self._read_arm_positions()))
 
     # ------------------------------------------------------------------ state
 

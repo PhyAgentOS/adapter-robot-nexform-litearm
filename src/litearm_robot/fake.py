@@ -38,3 +38,6 @@ class FakeArm:
         self.q = [float(value) for value in q]
         self.move_count += 1
         return self.get_state().value
+
+    def home(self, timeout: float | None = None):
+        return self.movej_sync([0.0] * 7)

@@ -6,8 +6,9 @@ NexForm LiteArm 7 轴机械臂 + LiteGrip 夹爪的 Forge / Dora 接入包。
 - 接入标准：PhyAgentOS Robot 接入手册（结算清单见 `docs/validation.md`）
 - 参考实现：<https://github.com/PhyAgentOS/adapter-robot-piper>
 
-> 状态：**M1 真机只读**。资产、驱动、配置、示例与离线自检已完成；真机固件/软限位/
-> 静止状态已读回，尚未做任何真机运动与验收。验收进度见 [`docs/validation.md`](docs/validation.md)。
+> 状态：**阶段 2 真机动作**。资产、驱动、配置、示例与离线自检已完成；真机固件、软限位、
+> 静止状态已读回，7 轴最小/最大/归零 sweep 与 `home()` 零位对照已完成（2026-11-05）。
+> 夹爪未连接，仿真/Dora 真机链路待执行。验收进度见 [`docs/validation.md`](docs/validation.md)。
 
 ## 1. 机器人型号与构型
 
@@ -37,7 +38,8 @@ NexForm LiteArm 7 轴机械臂 + LiteGrip 夹爪的 Forge / Dora 接入包。
 见 [`docs/joint_table.md`](docs/joint_table.md)。MJCF 已按 URDF 重建（2026-11-05，
 同步自 `litearm-mujoco` `b901d49`），轴方向与限位逐项一致。固件侧零位/正方向在
 实测位姿下与 URDF FK 吻合（位置差 <1e-5 m）。J4/J5 实测越软限位是未使能自然平衡点
-所致（固件 `POS_RECOVER_BAND=0.05 rad`），非故障；使能会各带回约 0.024/0.037 rad。
+所致（`POS_RECOVER_BAND`：1.10.0 为 0.05 rad，1.10.1 起 0.30 rad；参考源码 1.10.5），
+非故障；使能会各带回约 0.024/0.037 rad。
 
 ## 4. 末端执行器
 
@@ -89,7 +91,7 @@ cd examples/02_dora_tests && dora run dataflow.yaml   # 需 dora-cli 0.4.1
 
 ```bash
 python examples/01_sdk_tests/read_state.py
-python examples/01_sdk_tests/move_single_joint.py --joint 0 --delta 0.02 --execute
+python examples/01_sdk_tests/move_single_joint.py --joint 0 --delta 0.05 --execute
 python examples/01_sdk_tests/gripper_open_close.py --execute
 ```
 
@@ -137,7 +139,8 @@ MDH 已由 URDF 反推，见 [`docs/mdh.md`](docs/mdh.md)；t_ee 当前为 0。
 
 ## 13. 已知限制
 
-1. 未验收：真机仅完成只读读取（固件 1.11.0-7J、软限位、静止状态），运动与夹爪项均待执行。
+1. 真机已完成只读读取（固件 1.11.0-7J、软限位、静止状态）、7 轴 min/max/zero sweep 和
+   `home()` 零位对照；夹爪、仿真、Dora 真机链路仍未验收。
 2. `set_command` 只支持 `mode="position"`；速度/力矩/MIT 未映射。
 3. SDK 的 `movej_sync` 是阻塞 PTP，驱动用后台 worker 合并最新目标；
    不是 20 ms 级轨迹流，不能替代 `joint_trajectory_controller` 的高频下发。

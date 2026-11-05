@@ -32,9 +32,9 @@
 | 零位 | URDF/MJCF `q=0`；SDK `home()` 0x2A 回 `[0]*7` | 📌 | SDK 文档；2026-11-05 固件 FK 与 URDF FK 在实测 `q` 下吻合，见 `joint_table.md` §3.1 |
 | 正方向 | 逐关节 `+1` | 📌 | 同次 FK 对拍一致；上位机逐关节方向检测待阶段 2 |
 | 固件软限位 | 逐关节值与 URDF 内缩 1° 一致 | ✅ | 2026-11-05 `Arm.params.all_joint_params()`，见 `joint_table.md` §2.1 |
-| `following_error` 阈值 | J1–J2 0.35 / J3–J4 0.30 / J5–J7 0.25 rad | 📌 | 固件 `params/defaults.c` + `tools/PARAM_STATE.md`（1.10.0 源码）；1.11.0 无读回命令，未实机复核 |
+| `following_error` 阈值 | J1–J2 0.35 / J3–J4 0.30 / J5–J7 0.25 rad | 📌 | 固件 `params/defaults.c` + `tools/PARAM_STATE.md`（1.10.5 源码）；1.11.0 无读回命令，未实机复核 |
 | `speed` 归一化 → 实际角速度 | SDK 侧 0..1 | ⬜ | 阶段 2：实测 |
-| 未使能越限容差 | `POS_RECOVER_BAND = 0.05 rad`；越界 ≤0.05 不锁存，使能时受控回程 | 📌 | 固件 1.10.0 `safety/safety_check.c`；1.11.0 同行为待源码核对 |
+| 未使能越限容差 | `POS_RECOVER_BAND = 0.30 rad`（1.10.0 为 0.05，1.10.1 起 0.30）；越界 ≤带宽不锁存，使能时受控回程 | 📌 | 已归档固件 1.10.5 `safety/safety_check.c:97`；1.11.0 同行为待源码核对 |
 
 连接：USB CDC `1d50:606f`，`port: null` 时由 SDK 自动发现串口。
 
@@ -44,7 +44,7 @@
 |---|---|---|
 | 版本前缀 | `Litearm` | ✅ |
 | 最低版本 | `1.5.0`（SDK 常量 `MIN_FW`） | ✅ |
-| 实机版本 | `Litearm1.11.0-7J` | ✅ 2026-11-05 `Arm.firmware`；本机固件源码仓最高只到 1.10.0，1.11.0 源码未归档 |
+| 实机版本 | `Litearm1.11.0-7J` | ✅ 2026-11-05 `Arm.firmware`；已归档参考源码 `Litearm1.10.5-7J`（`litearm-stm32` `6d4dd27`，2026-11-02），1.11.0 对应源码未归档 |
 
 ## 4. 夹爪（LiteGrip）
 
@@ -82,7 +82,7 @@
 - [x] `Arm.firmware` 实际版本：`Litearm1.11.0-7J`
 - [x] 逐关节固件软限位：`arm.params.all_joint_params()`，2026-11-05
 - [ ] `following_error` 阈值：SDK 无读回命令，暂用固件源码值（见 §2）
-- [ ] `home()` 前/后的 `q` 回读（零位对照）：`home()` 是运动，需单独批准
+- [x] `home()` 前/后的 `q` 回读（零位对照）：2026-11-05 在零位附近执行，前后 7 轴 `q` 完全一致（`max|Δ|=0`），`flags=[]`、`joint_fault=0`、`err=1`
 - [ ] 夹爪 `position_mm` / `force_n` / 温度 / `error_code`：需 `enable()` 后才有反馈，需批准
 
 ## 7. 变更记录
@@ -92,3 +92,4 @@
 | 2026-11-05 | 建立本表；录入 SDK 版本、固件最低版本、夹爪标定与总线参数 |
 | 2026-11-05 | 由 URDF 反推 MDH 并完成随机 FK 对拍（`docs/mdh.md`）；MDH 状态改为已确认 |
 | 2026-11-05 | 真机只读：固件 1.11.0-7J、软限位、`kp/kd/tau_max`、静止 `q`；J4/J5 越软限位定位为未使能自然平衡点（`POS_RECOVER_BAND`） |
+| 2026-11-05 | 归档固件参考源码 `Litearm1.10.5-7J`（`6d4dd27`）；按该源码更正 `POS_RECOVER_BAND` 为 0.30 rad（1.10.0 为 0.05） |

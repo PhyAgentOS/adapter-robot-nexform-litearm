@@ -1,0 +1,5 @@
+<!-- 仿真入口：复用一个已对齐真机运动学的 litearm7.xml。
+     litearm7.xml 自身已包含 floor + lights + 7 轴 + tcp site。 -->
+<mujoco model="litearm_scene">
+  <include file="litearm7.xml"/>
+</mujoco>

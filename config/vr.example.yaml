@@ -1,0 +1,77 @@
+# VR 遥操参数（接入标准 §10）
+#
+# 来源：lite-vr/litearm-vr-teleop/teleop/config/teleop.yaml
+# 抓取时间：2026-11-05。数值是对方仓库的出厂标定值，本仓只做记录/引用，
+# 不在此处重复标定。改动源仓后必须同步本文件并重新验证。
+source:
+  repository: lite-vr/litearm-vr-teleop
+  file: teleop/config/teleop.yaml
+  captured_at: "2026-11-05"
+  verified_on_hardware: true   # 单臂正装/双臂侧装已有真机记录
+
+# WebXR 手柄系：右手系，+X 右、+Y 上、-Z 前。
+frame_convention: webxr_right_handed
+
+# 标准要求记录 MDH；源仓运行时用的是 URDF + IK，不消费 MDH，故本字段保持 null。
+# 本仓的 MDH 表由 URDF 反推并做 FK 对拍，见 docs/mdh.md。
+mdh: null
+
+mapping:
+  # 手柄 -> 机器人旋转的轴对应；当前为恒等。
+  axis_remap:
+    - [1.0, 0.0, 0.0]
+    - [0.0, 1.0, 0.0]
+    - [0.0, 0.0, 1.0]
+
+  # 单臂正装平移映射：rel_t = M^T @ 手柄位移。
+  # 手柄右移 +x -> 机器人 +x；上移 +y -> 机器人 +z；前推 -z -> 机器人 +y。
+  translation_remap:
+    - [1.0, 0.0, 0.0]
+    - [0.0, 0.0, 1.0]
+    - [0.0, -1.0, 0.0]
+
+  # 逐轴旋转符号（作用在 rel_rotvec 上）。
+  rotation_signs: [1.0, -1.0, -1.0]
+  base_link_rotation_signs: [-1.0, -1.0, 1.0]
+
+  # 双臂侧装独立标定，与单臂正装不同，不能混用。
+  dual_translation_remap_left:
+    - [0.0, -1.0, 0.0]
+    - [0.0, 0.0, 1.0]
+    - [-1.0, 0.0, 0.0]
+  dual_translation_remap_right:
+    - [0.0, -1.0, 0.0]
+    - [0.0, 0.0, 1.0]
+    - [-1.0, 0.0, 0.0]
+  dual_rotation_signs_left: [1.0, -1.0, -1.0]
+  dual_rotation_signs_right: [-1.0, 1.0, -1.0]
+
+# 平移缩放：源仓为 1:1 直接映射。
+scale:
+  translation: 1.0
+  rotation: 1.0
+
+# t_ee：操作者控制的工具点相对末端 tip link 的偏移（沿工具 +Z，米）。
+# 0 = 直接控制法兰。装夹爪/灵巧手时需按实际 TCP 修改并重新验证。
+t_ee:
+  tcp_offset_m: [0.0, 0.0, 0.0]
+  note: "litearm SDK 的 set_tcp_offset 是宿主侧换算，固件 get_tcp 恒为法兰"
+
+home:
+  single_upright_rad: [0.0, -0.5, 0.0, -2.1, -1.57, 0.0, 0.0]
+  dual_left_rad: [-1.5708, 0.6, 0.0, -1.7, 0.0, 0.0, 0.0]
+  mirror_signs: [-1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0]
+
+# 跟踪安全边界（源仓出厂值）。
+tracking:
+  input_timeout_s: 1.0
+  feedback_timeout_s: 0.5
+  max_position_error_m: 0.3
+  max_rotation_error_rad: 1.5
+  max_joint_velocity_rad_s: 2.0
+  max_joint_acceleration_rad_s2: 12.0
+  max_step_rad: 0.2
+
+validation:
+  status: source_repo_verified
+  record: "见源仓 CHANGELOG 与 2026-10-30 真机遥操记录；本仓尚未独立复验"

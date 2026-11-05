@@ -1,0 +1,12 @@
+include LICENSE
+include NOTICE
+include THIRD_PARTY_NOTICES.md
+include SAFETY.md
+include CHANGELOG.md
+prune assets
+prune examples
+prune config
+prune docs
+prune scripts
+prune tests
+global-exclude __pycache__ *.py[cod]

@@ -1,0 +1,51 @@
+# LiteArm 7 轴 + LiteGrip 夹爪 —— 真机配置示例
+# 复制为 robot.yaml 后按现场修改；示例值不是验收结论。
+
+# null = 让 litearm SDK 自动发现 USB CDC 串口。
+port: null
+# 固件版本前缀校验（SDK 自己也会做最低版本校验）。
+firmware_prefix: Litearm
+
+# 顺序必须与 assets/urdf、assets/mjcf、SDK 一致。
+joint_order:
+  - joint1
+  - joint2
+  - joint3
+  - joint4
+  - joint5
+  - joint6
+  - joint7
+  - gripper
+
+# 0..1，传给 SDK 的归一化速度；首次真机验收建议 <= 0.2。
+speed: 0.2
+
+enable_on_connect: true
+move_to_initial: true
+# 断开时是否先回 reset。默认 false：回位是运动，应由调用方显式要求。
+move_to_reset_on_disconnect: false
+
+# 生命周期位姿，单位 rad，未写的关节沿用当前值。
+# 示例值来自 VR 遥操的 single_q_home（标定值），现场以实际支撑姿态为准。
+initial_position:
+  joint1: 0.0
+  joint2: -0.5
+  joint3: 0.0
+  joint4: -2.1
+  joint5: -1.57
+  joint6: 0.0
+  joint7: 0.0
+
+reset_position: {}
+
+# 夹爪可选。未安装时 enabled: false，驱动只发臂命令。
+gripper:
+  enabled: false
+  channel: can0
+  can_id: 0x08
+  # 显式给主站 ID，不用自动探测（0x7FF 会被臂板桥屏蔽）。
+  mst_id: 0x18
+  max_opening_m: 0.080
+  speed_mm_s: 20.0
+
+debug: false

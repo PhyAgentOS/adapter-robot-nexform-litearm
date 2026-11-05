@@ -1,0 +1,82 @@
+# 模板：真机基础动作（验收清单第 8、11 项）
+#
+# 数据流（端口名取自 operator-motion 的 piper_fake_plant 示例）：
+#   motion_action_client -> motion_server -> joint_trajectory_controller
+#     -> 本仓 robot 节点 -> LiteArm
+#
+# 依赖（与 forge stable/1.x / Core 1.1.x / dora 0.4.1 对齐）：
+#   - operator-motion（forge-motion-server）
+#   - operator-controls（forge-joint-trajectory-controller）
+#   - 环境变量 OPERATOR_MOTION_ROOT / OPERATOR_CONTROLS_ROOT
+#
+# 还需要两处现场配置（本仓不提供，避免给出错误的运动学参数）：
+#   - motion_server.yaml：URDF、base/tip frame、速度/加速度限位
+#   - controller.yaml：关节组的 position/velocity 限位与容差
+#   参考 operator-motion/examples/piper_fake_plant/ 的同名文件改写。
+#
+# 安全前置：
+#   1. examples/01_sdk_tests 全部只读检查通过；
+#   2. config/robot.yaml 中 speed <= 0.2；
+#   3. 现场有人守在硬件急停/断电位置；
+#   4. 姿态有支撑；未用上位机确认关节机械方向前不做仿真同步。
+#
+# 本文件是结构模板；未验证前不要直接运行。
+
+nodes:
+  - id: robot
+    path: python
+    args: "-u -m litearm_robot.main run --config ../../../config/robot.yaml"
+    inputs:
+      tick: dora/timer/millis/20
+      action: joint_trajectory_controller/joint_command
+    outputs:
+      - state
+
+  - id: joint_trajectory_controller
+    path: forge-joint-trajectory-controller
+    args: "--config controller.yaml"
+    inputs:
+      tick: dora/timer/millis/20
+      joint_state: robot/state
+      trajectory_goal: motion_server/trajectory_goal
+      trajectory_cancel: motion_server/trajectory_cancel
+    outputs:
+      - joint_command
+      - trajectory_feedback
+      - trajectory_result
+
+  - id: motion_server
+    path: forge-motion-server
+    args: "--config motion_server.yaml"
+    inputs:
+      tick: dora/timer/millis/20
+      joint_state: robot/state
+      move_joints_goal: motion_action_client/move_joints_goal
+      move_joints_cancel: motion_action_client/move_joints_cancel
+      move_pose_goal: motion_action_client/move_pose_goal
+      move_pose_cancel: motion_action_client/move_pose_cancel
+      trajectory_feedback: joint_trajectory_controller/trajectory_feedback
+      trajectory_result: joint_trajectory_controller/trajectory_result
+    outputs:
+      - move_joints_feedback
+      - move_joints_result
+      - move_pose_feedback
+      - move_pose_result
+      - trajectory_goal
+      - trajectory_cancel
+
+  - id: motion_action_client
+    path: python
+    args: "-u ${OPERATOR_MOTION_ROOT}/examples/piper_fake_plant/motion_action_client.py --config motion_server.yaml --timeout-s 25"
+    inputs:
+      tick: dora/timer/millis/20
+      joint_state: robot/state
+      move_joints_feedback: motion_server/move_joints_feedback
+      move_joints_result: motion_server/move_joints_result
+      move_pose_feedback: motion_server/move_pose_feedback
+      move_pose_result: motion_server/move_pose_result
+    outputs:
+      - move_joints_goal
+      - move_joints_cancel
+      - move_pose_goal
+      - move_pose_cancel

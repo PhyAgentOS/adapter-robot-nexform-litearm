@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.venv_build/
+build/
+dist/
+.pytest_cache/
+
+# Dora / runtime generated outputs
+out/
+**/out/
+logs/
+**/logs/
+runs/
+validation_output/*
+!validation_output/README.md
+*.log
+*.mcap
+MUJOCO_LOG.TXT

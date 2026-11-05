@@ -1,0 +1,33 @@
+# 模板：同构控制（验收清单第 12 项）
+#
+# 同构控制 = 主臂 JointState 直接镜像为从臂 position 命令。
+# 标准 runner 已内建该通路：master_state 输入 -> JointCommand(position)。
+#
+# 依赖：
+#   - 主臂的 Dora 节点（operator 提供的 master / leader 适配器）
+#   - 本仓 robot-litearm（从臂）
+#
+# 运行前置：
+#   1. 主从两臂的 joint_order 完全一致（joint1..joint7）；
+#   2. 先在仿真中验证方向，再上真机（固件零位/正方向确认见 docs/joint_table.md）；
+#   3. 真机速度限制在 config/robot.yaml 的 speed <= 0.2。
+#
+# 本文件是结构模板；主臂节点路径以现场部署为准。
+
+nodes:
+  - id: master_robot
+    path: "${MASTER_ADAPTER_PATH}/main.py"
+    args: "--config master_robot.yaml"
+    inputs:
+      tick: dora/timer/millis/20
+    outputs:
+      - state
+
+  - id: follower_robot
+    path: python
+    args: "-u -m litearm_robot.main run --config ../../../config/robot.yaml"
+    inputs:
+      tick: dora/timer/millis/20
+      master_state: master_robot/state
+    outputs:
+      - state

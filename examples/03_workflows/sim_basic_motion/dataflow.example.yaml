@@ -1,0 +1,36 @@
+# 模板：仿真基础动作 + 全关节 sweep（验收清单第 6-7 项）
+#
+# 依赖：
+#   - operator-simulator-mujoco（mujoco_sim 节点）
+#   - 本仓 examples/02_dora_tests/state_print.py
+#   - 环境变量 FORGE_RUNTIME_ROOT（包含 nodes/viewers 的 Forge runtime 部署树）
+#
+# 运行（模板本身不含具体部署路径，确认后再跑）：
+#   MUJOCO_GL=egl dora run dataflow.example.yaml
+#
+# 注意：sweep 会逐个关节走 下限 -> 上限 -> 0，仅用于仿真。
+
+nodes:
+  - id: mujoco
+    path: mujoco_sim
+    inputs:
+      tick: dora/timer/millis/20
+      action: joint_sweep/action
+    outputs:
+      - proprio_state
+    args: "--config simulator.yaml"
+
+  - id: joint_sweep
+    path: python
+    args: "-u joint_sweep.py --hold 0.5 --output validation_output/sim_sweep.jsonl"
+    inputs:
+      tick: dora/timer/millis/50
+      state: mujoco/proprio_state
+    outputs:
+      - action
+
+  - id: state_print
+    path: python
+    args: "-u ../../02_dora_tests/state_print.py --every 1.0"
+    inputs:
+      state: mujoco/proprio_state

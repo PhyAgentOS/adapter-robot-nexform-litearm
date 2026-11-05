@@ -1,0 +1,28 @@
+# operator-simulator-mujoco 配置：LiteArm 7 轴
+# 模型直接使用本仓 assets/mjcf/scene.xml。
+# 需要 MUJOCO_GL=egl（无头）或 glfw（有显示）。
+
+model_path: ../../../assets/mjcf/scene.xml
+control_hz: 50
+
+joints:
+  - { name: joint1, mode: position, unit: radians }
+  - { name: joint2, mode: position, unit: radians }
+  - { name: joint3, mode: position, unit: radians }
+  - { name: joint4, mode: position, unit: radians }
+  - { name: joint5, mode: position, unit: radians }
+  - { name: joint6, mode: position, unit: radians }
+  - { name: joint7, mode: position, unit: radians }
+
+robots:
+  - id: robot_0
+    joints: [joint1, joint2, joint3, joint4, joint5, joint6, joint7]
+    actuator_order: [joint1, joint2, joint3, joint4, joint5, joint6, joint7]
+    joint_to_actuator:
+      joint1: motor1
+      joint2: motor2
+      joint3: motor3
+      joint4: motor4
+      joint5: motor5
+      joint6: motor6
+      joint7: motor7

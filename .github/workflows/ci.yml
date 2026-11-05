@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        run: python -m pip install uv==0.12.5
+      - name: Sync locked environment
+        run: uv sync --frozen --extra test
+      - name: Validate package build
+        run: uv build
+      - name: Unit tests
+        run: uv run python -m pytest -q
+      - name: Import public Forge packages
+        run: uv run python -c "import forge_msgs, forge_robot"
+      - name: Validate repository assets
+        run: |
+          uv run python scripts/validate_assets.py
+          uv run python scripts/urdf_to_mdh.py --check
+      - name: Parse all YAML
+        run: |
+          uv run python - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          paths = sorted(
+              p for pattern in ("*.yml", "*.yaml")
+              for p in Path(".").rglob(pattern)
+              if ".venv" not in p.parts and "out" not in p.parts
+          )
+          for path in paths:
+              with path.open(encoding="utf-8") as stream:
+                  yaml.safe_load(stream)
+              print(f"parsed {path}")
+          print(f"{len(paths)} YAML files parsed")
+          PY
+      - name: Load MuJoCo model
+        run: >-
+          uv run --with mujoco==3.9.0 python -c "import mujoco;
+          model=mujoco.MjModel.from_xml_path('assets/mjcf/scene.xml');
+          print(f'MuJoCo model loaded: nq={model.nq}, nu={model.nu}')"
+      - name: Load GLB
+        run: >-
+          uv run --with trimesh==5.0.0 python -c "import trimesh;
+          scene=trimesh.load('assets/glb/litearm.glb');
+          print(f'GLB loaded: {len(scene.geometry)} geometries')"
+      - name: License and public-tree checks
+        run: |
+          test -f LICENSE
+          test -f NOTICE
+          test -f THIRD_PARTY_NOTICES.md
+          test -f SAFETY.md
+          test -f assets/glb/litearm.glb
+          ! git grep -n -E '/home/[^ ]+/|/Users/|192\.168\.|gitlab\.' -- ':!.github/workflows/ci.yml'
+
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        run: python -m pip install uv==0.12.5
+      - name: Export and audit locked runtime dependencies
+        run: |
+          uv export --frozen --format requirements-txt --no-dev --no-emit-project --output-file /tmp/requirements.txt
+          uvx pip-audit --format json --requirement /tmp/requirements.txt > /tmp/audit.json || true
+          python - <<'PY'
+          import json
+
+          # forge-msgs (<2) pins pillow>=10,<13, so the patched 13.x line cannot
+          # be selected. Pillow advisories are tracked in OPEN_SOURCE_AUDIT.md
+          # and this adapter does not process images. Any other finding fails.
+          allowed = {"pillow"}
+          with open("/tmp/audit.json", encoding="utf-8") as stream:
+              report = json.load(stream)
+          findings = [
+              (dep["name"], dep["version"], vuln["id"])
+              for dep in report.get("dependencies", [])
+              for vuln in dep.get("vulns", [])
+              if dep["name"].lower() not in allowed
+          ]
+          if findings:
+              raise SystemExit(f"Unapproved vulnerabilities: {findings}")
+          print("Audit passed; only upstream-blocked Pillow advisories remain")
+          PY
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Scan publishable text for secrets
+        run: |
+          python -m pip install detect-secrets==1.5.0
+          detect-secrets scan --all-files --exclude-files '^(\.git/|assets/(glb|mjcf|urdf|meshes)/|uv\.lock$)' > /tmp/secrets.json
+          python - <<'PY'
+          import json
+          with open("/tmp/secrets.json", encoding="utf-8") as stream:
+              findings = json.load(stream).get("results", {})
+          if findings:
+              raise SystemExit(f"Potential secrets detected: {findings}")
+          PY

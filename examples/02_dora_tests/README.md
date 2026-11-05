@@ -45,3 +45,6 @@ PATH=$HOME/.dora/bin:$PATH dora run dataflow.yaml
 - 标准 runner 在退出时会调用 `driver.disconnect()`；驱动里的 `disconnect()` 幂等。
 - 本交付包不含相机，`camera_topic_test` 不提供；如需相机请接 `operator-*` 的相机节点，
   或先用 `examples/01_sdk_tests/camera_read.py` 验证取流。
+- 夹爪（end effector）不单独建 Dora 节点：标准 runner 已转发 `JointCommand(gripper, m)`，
+  第 5 项用同一驱动接口验证过 0.080/0.000/0.080 m 往返；真机 Dora 若只是验证夹爪，
+  可用 `action_source.py` 的 `JointCommand` 端口直接下发。

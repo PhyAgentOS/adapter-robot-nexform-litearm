@@ -7,6 +7,7 @@
 3. MJCF scene.xml 能 include litearm7.xml。
 4. URDF 与 MJCF 的关节轴方向、限位对比（已知差异会报 warn）。
 5. assets/glb 是否已有 GLB。
+6. assets/SHA256SUMS 台账逐文件哈希比对。
 
 退出码：有 error 时为 1；只有 warn 时为 0。
 
@@ -18,6 +19,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -27,6 +29,7 @@ URDF_PATH = ROOT / "assets/urdf/litearm.urdf"
 MJCF_PATH = ROOT / "assets/mjcf/litearm7.xml"
 SCENE_PATH = ROOT / "assets/mjcf/scene.xml"
 GLB_DIR = ROOT / "assets/glb"
+LEDGER_PATH = ROOT / "assets/SHA256SUMS"
 JOINTS = [f"joint{i}" for i in range(1, 8)]
 
 errors: list[str] = []
@@ -202,6 +205,32 @@ def check_glb() -> None:
         print(f"[ok] GLB: {len(glb_files)} file(s)")
 
 
+def check_ledger() -> None:
+    if not LEDGER_PATH.exists():
+        warn("missing assets/SHA256SUMS")
+        return
+
+    checked = 0
+    for line in LEDGER_PATH.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        digest, sep, rel = line.partition("  ")
+        if not sep or not rel:
+            error(f"SHA256SUMS: malformed line {line!r}")
+            continue
+        path = ROOT / rel
+        if not path.is_file():
+            error(f"SHA256SUMS: missing {rel}")
+            continue
+        actual = hashlib.sha256(path.read_bytes()).hexdigest()
+        if actual != digest:
+            error(f"SHA256SUMS: {rel} hash mismatch")
+            continue
+        checked += 1
+    print(f"[ok] SHA256 ledger: {checked} file(s)")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--strict", action="store_true", help="warn 也返回非零")
@@ -213,6 +242,7 @@ def main(argv: list[str] | None = None) -> int:
     if urdf and mjcf:
         compare(urdf, mjcf)
     check_glb()
+    check_ledger()
 
     for message in warnings:
         print(f"[warn] {message}")

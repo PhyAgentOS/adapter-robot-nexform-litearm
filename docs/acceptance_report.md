@@ -8,11 +8,11 @@
 
 ## 结论
 
-总体状态：fail
+总体状态：pass
 
-说明：16 项必需路径全部存在，逐项验收中第 1–14 项为 `✓`；第 15 项为 `✗`，原因是
-当前工作区仍有未提交改动（45 项，含第 9–14 项代码、workflow、厂商手册归档与本报告）。
-本报告是提交前草案；完成提交后复跑路径校验并把第 15 项改为 `✓`，总体即为 pass。
+说明：16 项必需路径全部存在，逐项验收 15 项全部为 `✓`。第 15 项于 2026-11-05 完成：
+全部改动已提交并推送到 `PhyAgentOS/adapter-robot-nexform-litearm`（分支
+`feat/litearm-adapter-delivery`，PR #1），工作区无未提交改动。
 
 ## 路径结构验证
 
@@ -116,18 +116,17 @@
     值为 `[-0.0071, -0.0239, 0.140]` m（法兰系 `ee_link`，`p_tool = p_ee + R_ee·xyz`），
     横向来自 handeye 实测 `tool_offset_xy_m`，轴向 0.140 m 由实测 + CAD 交叉检查，
     只读 SDK 复核差 0（`validation_output/tee_check.json`）。
-15. [✗] 所有资产、代码、配置、参数和示例均已提交并记录使用方式。原因/证据：
+15. [✓] 所有资产、代码、配置、参数和示例均已提交并记录使用方式。原因/证据：
+    2026-11-05 全部改动已提交并推送到 `PhyAgentOS/adapter-robot-nexform-litearm`
+    （分支 `feat/litearm-adapter-delivery`，PR #1），工作区无未提交改动；
     使用方式已记录（`README.md`、`docs/README.md`、`docs/setup.md`、
-    各 `examples/*/README.md`），交付布局验证已通过（staging `robots/litearm`，16/16）；
-    但当前工作区仍有 45 项未提交改动（第 9–14 项代码与 workflow、`scene_position.xml`、
-    厂商手册归档、本报告等），不满足"均已提交"。提交后本项可改为 `✓`。
+    各 `examples/*/README.md`），交付布局验证已通过（staging `robots/litearm`，16/16）。
 
 ## 失败 / 阻塞项
 
-- 第 15 项：工作区 45 项改动未提交（22 modified + 33 untracked，部分重叠）。
-  这是本报告唯一的 `✗`，也是总体 fail 的唯一原因。
-- 非失败但需知悉（用户已确认不作为问题）：第 8–12 项真机数据采自
-  `1.11.0-7J` 样机，当前台架为 `1.10.1-7J`；VR→Dora 桥尚未在本仓真机 dataflow 上跑过；
+- 无失败项。
+- 需知悉（用户已确认不作为问题）：第 8–12 项真机数据采自 `1.11.0-7J` 样机，
+  当前台架为 `1.10.1-7J`；VR→Dora 桥尚未在本仓真机 dataflow 上跑过；
   夹爪 payload 为 CAD 估算、未写固件；`1.11.0-7J` 固件源码未归档。
 
 ## 已执行验证
@@ -153,8 +152,7 @@
 
 ## 风险与后续
 
-1. 提交第 9–14 项改动、`scene_position.xml`、厂商手册归档和本报告后，复跑路径校验，
-   第 15 项改 `✓`，总体转 pass；之后重新录制 staging 快照。
+1. 等待 PR #1 审核并合并；合并后重新录制 staging 快照。
 2. 录制 MuJoCo 仿真视频和真机视频，作为交付附件。
 3. 把本报告的终端结果截图填入飞书 Robots 清单。
 4. `Robot接入手册.md` 的示例命令按自身 `cd` 路径只需 5 级 `..` 到 framework 根，

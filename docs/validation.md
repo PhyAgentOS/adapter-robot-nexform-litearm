@@ -9,7 +9,7 @@
 | 一、资料与 SDK 最小测试 | §5、§6 | 1–5 | 已完成 |
 | 二、仿真接入 | §7 | 6–7 | 已完成 |
 | 三、Driver + Dora + Workflow + 遥操 | §8–§10 | 8–14 | 已完成 |
-| 四、交付整理与验收 | §11、§12 | 15 | 本地整理已完成；提交/PR 待定 |
+| 四、交付整理与验收 | §11、§12 | 15 | 已完成（2026-11-05 提交并开 PR #1） |
 
 | # | 验收项 | 状态 | 证据 |
 |---|---|---|---|
@@ -27,7 +27,7 @@
 | 12 | 同构控制在仿真和真机姿态一致 | 已完成 | 仿真：`homomorphic_sim.jsonl` 4 个保持段稳态误差 0、方向一致；真机：`homomorphic_real.jsonl` 稳态最大误差 0.0027 rad、方向一致、无反转；跨环境偏置差 ≤0.0011 rad（见 §同构控制记录） |
 | 13 | VR 遥操方向/缩放/末端姿态符合预期 | 已完成 | 仿真（2026-11-05，lite-vr teleop pybullet + 假头显）：平移 scale 1.00、手柄 +x→末端 +x / +z→−y、末端跟踪误差 ≤0.6 mm；旋转 40° 输入→末端 39.8°、主转轴单一、每帧 ≤2.06°；IK 612/612（平移）和 566/574（旋转）、无步长限幅。**VR→Dora 桥端到端（仿真）**：lite-vr teleop → TCP :9001 → `vr_bridge_dora.py` → Dora `JointCommand` → `mujoco_sim` → state 回传；IK 720/720、末端 6.0 cm 圆 vs 目标 p95 0.68 mm、桥跟踪（70 ms 延迟对齐）p95 10.7 mrad、持位误差 0。证据 `examples/03_workflows/vr_teleoperation/validation_output/`，见 §VR 仿真记录。真机：2026-11-05 用户现场确认方向/缩放/末端姿态无问题（未经过本仓桥） |
 | 14 | MDH/rotation/scale/t_ee 已记录来源/方法/结果 | 已完成 | MDH 由 URDF 反推并 FK 对拍（`docs/mdh.md`）；rotation/scale 记录自源仓 `teleop.yaml`（`config/vr.example.yaml`）；t_ee=`[-0.0071,-0.0239,0.140]` m（handeye 实测 + CAD 交叉检查 + 只读 SDK 复核，见 §t_ee 记录）。夹爪 payload/堵转阈值见 §夹爪 payload 与堵转阈值记录 |
-| 15 | 所有资产/代码/配置/参数/示例已提交并记录用法 | 部分 | 本地整理已完成：README 覆盖手册 §11 全部 13 项；新增 `docs/README.md`（索引）与 `docs/setup.md`（安装/自检）；2026-11-05 本地自检 `pytest` 23 passed、`validate_assets.py` 0 error、`urdf_to_mdh.py --check` FK 位置误差 1.878e-11 m、`probe --fake` 通过。基线已提交；第 9–14 项代码/workflow、厂商手册归档等本批改动尚未提交（提交/推送待定）；交付布局验证已通过 staging `robots/litearm`（16/16，见 §交付布局验证）。用法见 `README.md`，许可与审计见 `NOTICE`/`THIRD_PARTY_NOTICES.md`/`OPEN_SOURCE_AUDIT.md` |
+| 15 | 所有资产/代码/配置/参数/示例已提交并记录用法 | 已完成 | 2026-11-05 已提交并推送到 `PhyAgentOS/adapter-robot-nexform-litearm`，分支 `feat/litearm-adapter-delivery`，PR #1；工作区无未提交改动。README 覆盖手册 §11 全部 13 项；`docs/README.md`（索引）与 `docs/setup.md`（安装/自检）已提交；本地自检 `pytest` 23 passed、`validate_assets.py` 0 error、`urdf_to_mdh.py --check` FK 位置误差 1.878e-11 m；交付布局验证已通过 staging `robots/litearm`（16/16，见 §交付布局验证）。用法见 `README.md`，许可与审计见 `NOTICE`/`THIRD_PARTY_NOTICES.md`/`OPEN_SOURCE_AUDIT.md` |
 
 ## 环境自检记录（2026-11-05）
 

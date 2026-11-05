@@ -1,0 +1,33 @@
+# Dora 单节点测试（真机）：真实 LitearmDriver + 动作源 + 状态消费者
+#
+# 运行（先完成 examples/01_sdk_tests 只读检查，确认周围无人、姿态有支撑）：
+#   cd examples/02_dora_tests
+#   PATH="$PWD/../../.venv/bin:$HOME/.dora/bin:$PATH" dora run dataflow.real.yaml
+#
+# speed 来自 ../../config/robot.yaml（本机为 0.1）；
+# action_source 只发一次 joint7 +0.05 rad。
+
+nodes:
+  - id: robot
+    path: python
+    args: "-u -m litearm_robot.main run --config ../../config/robot.yaml"
+    inputs:
+      tick: dora/timer/millis/20
+      action: action_source/action
+    outputs:
+      - state
+
+  - id: action_source
+    path: python
+    args: "-u action_source.py --joint joint7 --delta 0.05"
+    inputs:
+      tick: dora/timer/millis/100
+      state: robot/state
+    outputs:
+      - action
+
+  - id: state_print
+    path: python
+    args: "-u state_print.py --every 0.5"
+    inputs:
+      state: robot/state

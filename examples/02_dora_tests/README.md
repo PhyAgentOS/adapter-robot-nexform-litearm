@@ -26,17 +26,18 @@ PATH=$HOME/.dora/bin:$PATH dora run dataflow.yaml
 ## 运行（真机）
 
 1. 先完成 `examples/01_sdk_tests` 的只读检查。
-2. 复制 `config/robot.example.yaml` → `config/robot.yaml`，`speed <= 0.2`。
-3. 把 `dataflow.yaml` 中 `robot` 的 `args` 改为：
+2. 复制 `config/robot.example.yaml` → `config/robot.yaml`（已被 `.gitignore` 忽略），
+   `speed <= 0.2`；验收时可用 `move_to_initial: false` 避免上电大范围回位。
+3. 运行真机版 dataflow（`args` 为字符串，dora-cli 0.4.1 不接受 YAML 列表）：
 
-   ```yaml
-   args: "-u -m litearm_robot.main run --config ../../config/robot.yaml"
+   ```bash
+   PATH="$PWD/../../.venv/bin:$HOME/.dora/bin:$PATH" dora run dataflow.real.yaml
    ```
 
-   dora-cli 0.4.1 要求 `args` 是字符串；写成 YAML 列表会报
-   `invalid type: sequence, expected a string`。
-
 4. 确认周围无人、姿态有支撑后再运行；`action_source --delta` 保持 ≤ 0.05。
+
+2026-11-05 真机结果：`speed=0.1`，`joint7 +0.05` 一次，状态从 `+0.000` 更新到 `+0.050`，
+`sent=1`、`received=1455`，退出时正常 disconnect。
 
 ## 说明
 

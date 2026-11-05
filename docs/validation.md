@@ -12,7 +12,7 @@
 | 6 | 仿真模型可加载，joint 顺序和运动方向正确 | 已完成 | 2026-11-05 离线 MuJoCo：`offline_sweep.py` 加载 `assets/mjcf/scene.xml`，`nq=nu=7`，joint 名称/顺序/轴/限位与 URDF 逐项一致；7 轴正向命令均使 `q` 正向变化（7/7） |
 | 7 | 仿真中所有 joint 完成最小/最大/归零 | 已完成 | 2026-11-05 离线 MuJoCo：21 航点全部 `reached=true`（容差 0.02 rad），共 28/28 通过；记录 `examples/03_workflows/sim_basic_motion/validation_output/sim_sweep.jsonl` |
 | 8 | 真机中所有 joint 完成安全范围内最小/最大/归零 | 已完成 | 2026-11-05，7 轴逐一 sweep（J2 起其余关节全程归零），`speed=0.1`，全程 `flags=[]`、`joint_fault=0`、`err=1`：J1 `-2.7544 → +2.7552 → +0.0036`（折叠姿态，流程修正前）；J2 `-1.6726 → +1.6684 → +0.0048`；J3 `-2.7529 → +2.7544 → +0.0090`；J4 `-3.0150 → -0.0437 → +0.0002`；J5 `-2.7502 → +2.7506 → +0.0055`；J6 `-1.4952 → +1.4956 → +0.0048`；J7 `-1.4956 → +1.4990 → +0.0067`（rad），均在内缩 0.05 的目标内 |
-| 9 | Forge robot driver 稳定读状态并下发动作 | 待执行 | `tests/test_driver.py` + 真机 |
+| 9 | Forge robot driver 稳定读状态并下发动作 | 已完成 | 2026-11-05：`tests/test_driver.py` 8/8（FakeArm，全仓 23 passed）；真机 `LitearmDriver` 连续 20 次读状态 `max|dev|=0`，`set_command joint1 +0.05` 后 J1 0.32 s 到 `+0.0328`，回令后稳定到 `-0.0002 rad`，全程 `flags=[]`、`err=1` |
 | 10 | Dora 节点测试通过 | 部分 | fake 链路已验证：Python 3.12.13 + dora-cli 0.4.1，`dora run dataflow.yaml` 中 `state_print` 收到 7 轴状态，`action_source` 向 `joint7` 发 +0.05 rad 后状态更新；真机链路待阶段 2 |
 | 11 | 仿真 workflow 和真机 workflow 均可运行 | 待执行 | `examples/03_workflows/` |
 | 12 | 同构控制在仿真和真机姿态一致 | 待执行 | `homomorphic_control/` |
@@ -85,6 +85,10 @@ cd examples/02_dora_tests && env -u PYTHONPATH PATH="$HOME/.dora/bin:$PATH" dora
   至此 7 轴最小/最大/归零全部完成（第 8 项）。
 - `home()` 零位对照（2026-11-05）：臂已在全零位附近，`enable()` 后执行 `home()`（0x2A），
   前后 `q` 逐轴一致（`max|Δ|=0`），`flags=[]`、`joint_fault=0`、`err=1`；结束只 `close()`，保持使能持位。
+- Forge driver 真机（第 9 项，2026-11-05）：`LitearmDriver(RobotConfig(speed=0.1, move_to_initial=False))`，
+  20 次 `get_state()` 连续采样 `max|dev|=0`；`set_command(joint1, +0.05)` 后 0.32 s 到达 `+0.0328`
+  （`q_tol=0.03` 提前判到位），回令后稳定在 `-0.0002 rad`；`flags=[]`、`err=1`；
+  `disconnect()` 只关连接，不 `disable()`。离线 `test_driver.py` 8/8。
 - 夹爪未连接，第 5 项阻塞；未执行任何夹爪动作。
 
 ## 阶段 1 真机只读记录（2026-11-05）

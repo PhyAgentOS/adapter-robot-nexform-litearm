@@ -13,7 +13,7 @@ dependencies = [
   # Forge stable/1.x line, matching Core 1.1.x and Dora 0.4.1.
   "dora-rs==0.4.1",
   "forge-msgs>=1.0,<2",
-  "forge-robot>=1.0,<2",
+  "forge-robot>=1.0,<3",
   "PyYAML>=6.0",
 ]
 

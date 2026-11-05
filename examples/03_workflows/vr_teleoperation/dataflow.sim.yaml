@@ -1,0 +1,32 @@
+# VR 遥操仿真链路（验收清单第 13 项）。
+#
+# 链路：
+#   lite-vr teleop（WS 帧 -> 映射/IK）--TCP :9001--> vr_bridge_dora
+#     -> Dora JointCommand -> mujoco_sim -> proprio_state -> vr_bridge_dora
+#
+# 运行（本目录）：
+#   MUJOCO_GL=egl \
+#   PATH="$PWD/../../../.venv/bin:$HOME/.dora/bin:$HOME/.PhyAgentOS/forge_runtime/nodes/mujoco_sim/versions/mujoco_sim-1.1.1-linux-x86_64-tar-gz:$PATH" \
+#   env -u PYTHONPATH dora run dataflow.sim.yaml
+#
+# 然后在 lite-vr/litearm-vr-teleop/teleop 下用 --real --real-left 127.0.0.1:9001
+# 启动 teleop，并用假头显喂帧（见 README「仿真验证」）。
+
+nodes:
+  - id: vr_bridge
+    path: python
+    args: "-u vr_bridge_dora.py --host 127.0.0.1 --port 9001 --output validation_output/vr_bridge_sim.jsonl"
+    inputs:
+      tick: dora/timer/millis/20
+      state: mujoco/proprio_state
+    outputs:
+      - action
+
+  - id: mujoco
+    path: mujoco_sim
+    inputs:
+      tick: dora/timer/millis/20
+      action: vr_bridge/action
+    outputs:
+      - proprio_state
+    args: "--config simulator.yaml"

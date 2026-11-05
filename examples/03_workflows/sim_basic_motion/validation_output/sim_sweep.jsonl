@@ -1,0 +1,28 @@
+{"check": "direction", "joint": "joint1", "target_rad": 0.1, "actual_rad": 0.1, "tolerance_rad": 0.02, "reached": true}
+{"check": "direction", "joint": "joint2", "target_rad": 0.1, "actual_rad": 0.099943, "tolerance_rad": 0.02, "reached": true}
+{"check": "direction", "joint": "joint3", "target_rad": 0.1, "actual_rad": 0.1, "tolerance_rad": 0.02, "reached": true}
+{"check": "direction", "joint": "joint4", "target_rad": 0.028, "actual_rad": 0.028325, "tolerance_rad": 0.02, "reached": true}
+{"check": "direction", "joint": "joint5", "target_rad": 0.1, "actual_rad": 0.099703, "tolerance_rad": 0.02, "reached": true}
+{"check": "direction", "joint": "joint6", "target_rad": 0.1, "actual_rad": 0.099543, "tolerance_rad": 0.02, "reached": true}
+{"check": "direction", "joint": "joint7", "target_rad": 0.1, "actual_rad": 0.099701, "tolerance_rad": 0.02, "reached": true}
+{"check": "sweep", "joint": "joint1", "waypoint": "min", "target_rad": -2.759547, "actual_rad": -2.759547, "tolerance_rad": 0.02, "reached": true}
+{"check": "sweep", "joint": "joint1", "waypoint": "max", "target_rad": 2.759547, "actual_rad": 2.759546, "tolerance_rad": 0.02, "reached": true}
+{"check": "sweep", "joint": "joint1", "waypoint": "zero", "target_rad": 0.0, "actual_rad": 0.0, "tolerance_rad": 0.02, "reached": true}
+{"check": "sweep", "joint": "joint2", "waypoint": "min", "target_rad": -1.677547, "actual_rad": -1.677503, "tolerance_rad": 0.02, "reached": true}
+{"check": "sweep", "joint": "joint2", "waypoint": "max", "target_rad": 1.677547, "actual_rad": 1.676995, "tolerance_rad": 0.02, "reached": true}
+{"check": "sweep", "joint": "joint2", "waypoint": "zero", "target_rad": 0.0, "actual_rad": 0.000337, "tolerance_rad": 0.02, "reached": true}
+{"check": "sweep", "joint": "joint3", "waypoint": "min", "target_rad": -2.759547, "actual_rad": -2.759547, "tolerance_rad": 0.02, "reached": true}
+{"check": "sweep", "joint": "joint3", "waypoint": "max", "target_rad": 2.759547, "actual_rad": 2.759549, "tolerance_rad": 0.02, "reached": true}
+{"check": "sweep", "joint": "joint3", "waypoint": "zero", "target_rad": 0.0, "actual_rad": 0.0, "tolerance_rad": 0.02, "reached": true}
+{"check": "sweep", "joint": "joint4", "waypoint": "min", "target_rad": -3.021547, "actual_rad": -3.021538, "tolerance_rad": 0.02, "reached": true}
+{"check": "sweep", "joint": "joint4", "waypoint": "max", "target_rad": -0.032453, "actual_rad": -0.032261, "tolerance_rad": 0.02, "reached": true}
+{"check": "sweep", "joint": "joint4", "waypoint": "zero", "target_rad": 0.0, "actual_rad": 7e-05, "tolerance_rad": 0.02, "reached": true}
+{"check": "sweep", "joint": "joint5", "waypoint": "min", "target_rad": -2.759547, "actual_rad": -2.759249, "tolerance_rad": 0.02, "reached": true}
+{"check": "sweep", "joint": "joint5", "waypoint": "max", "target_rad": 2.759547, "actual_rad": 2.759249, "tolerance_rad": 0.02, "reached": true}
+{"check": "sweep", "joint": "joint5", "waypoint": "zero", "target_rad": 0.0, "actual_rad": 0.000298, "tolerance_rad": 0.02, "reached": true}
+{"check": "sweep", "joint": "joint6", "waypoint": "min", "target_rad": -1.503547, "actual_rad": -1.503476, "tolerance_rad": 0.02, "reached": true}
+{"check": "sweep", "joint": "joint6", "waypoint": "max", "target_rad": 1.503547, "actual_rad": 1.503554, "tolerance_rad": 0.02, "reached": true}
+{"check": "sweep", "joint": "joint6", "waypoint": "zero", "target_rad": 0.0, "actual_rad": 0.000209, "tolerance_rad": 0.02, "reached": true}
+{"check": "sweep", "joint": "joint7", "waypoint": "min", "target_rad": -1.503547, "actual_rad": -1.503247, "tolerance_rad": 0.02, "reached": true}
+{"check": "sweep", "joint": "joint7", "waypoint": "max", "target_rad": 1.503547, "actual_rad": 1.503247, "tolerance_rad": 0.02, "reached": true}
+{"check": "sweep", "joint": "joint7", "waypoint": "zero", "target_rad": 0.0, "actual_rad": 0.0003, "tolerance_rad": 0.02, "reached": true}

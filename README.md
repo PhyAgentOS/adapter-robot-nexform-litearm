@@ -109,7 +109,9 @@ PATH=$HOME/.dora/bin:$PATH dora run dataflow.yaml
 ## 8. 仿真 workflow
 
 见 [`examples/03_workflows/sim_basic_motion/`](examples/03_workflows/sim_basic_motion/)。
-当前为模板，依赖 `operator-simulator-mujoco` 与 Forge runtime。
+
+- 离线验证（第 6–7 项）：`python offline_sweep.py`，只需 `mujoco`+`numpy`，7 轴方向与 21 航点已通过。
+- Dora workflow（第 11 项）：仍为模板，依赖 `operator-simulator-mujoco` 与 Forge runtime。
 
 ## 9. 真机 workflow
 
@@ -140,7 +142,7 @@ MDH 已由 URDF 反推，见 [`docs/mdh.md`](docs/mdh.md)；t_ee 当前为 0。
 ## 13. 已知限制
 
 1. 真机已完成只读读取（固件 1.11.0-7J、软限位、静止状态）、7 轴 min/max/zero sweep 和
-   `home()` 零位对照；夹爪、仿真、Dora 真机链路仍未验收。
+   `home()` 零位对照；仿真模型/方向与 21 航点已离线验证；夹爪、Dora 真机链路和 workflow 仍未验收。
 2. `set_command` 只支持 `mode="position"`；速度/力矩/MIT 未映射。
 3. SDK 的 `movej_sync` 是阻塞 PTP，驱动用后台 worker 合并最新目标；
    不是 20 ms 级轨迹流，不能替代 `joint_trajectory_controller` 的高频下发。

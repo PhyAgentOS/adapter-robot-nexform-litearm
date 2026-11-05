@@ -9,8 +9,8 @@
 | 3 | SDK 最小测试可读取状态 | 已完成 | `examples/01_sdk_tests/read_state.py`：2026-11-05 真机 3 次读取，7 轴 `err=0`，`mode=INIT`，固件 `Litearm1.11.0-7J` |
 | 4 | SDK 最小测试可安全下发单关节动作 | 已完成 | 2026-11-05 真机：`move_single_joint.py --joint 0 --delta 0.05 --speed 0.1 --execute`，J1 `+0.1762 → +0.2268 rad`（目标 `+0.2262`，限位 ±2.827），动作后失能 |
 | 5 | 末端执行器可控制 | 阻塞 | 夹爪未连接：`gripper_open_close.py --execute` 在 `enable()` 处报“电机无反馈（超时 2.0s）”；被动 `get_state()` 恒 `fresh=False` |
-| 6 | 仿真模型可加载，joint 顺序和运动方向正确 | 待执行 | `examples/03_workflows/sim_basic_motion/` |
-| 7 | 仿真中所有 joint 完成最小/最大/归零 | 待执行 | 需 sweep 记录 |
+| 6 | 仿真模型可加载，joint 顺序和运动方向正确 | 已完成 | 2026-11-05 离线 MuJoCo：`offline_sweep.py` 加载 `assets/mjcf/scene.xml`，`nq=nu=7`，joint 名称/顺序/轴/限位与 URDF 逐项一致；7 轴正向命令均使 `q` 正向变化（7/7） |
+| 7 | 仿真中所有 joint 完成最小/最大/归零 | 已完成 | 2026-11-05 离线 MuJoCo：21 航点全部 `reached=true`（容差 0.02 rad），共 28/28 通过；记录 `examples/03_workflows/sim_basic_motion/validation_output/sim_sweep.jsonl` |
 | 8 | 真机中所有 joint 完成安全范围内最小/最大/归零 | 已完成 | 2026-11-05，7 轴逐一 sweep（J2 起其余关节全程归零），`speed=0.1`，全程 `flags=[]`、`joint_fault=0`、`err=1`：J1 `-2.7544 → +2.7552 → +0.0036`（折叠姿态，流程修正前）；J2 `-1.6726 → +1.6684 → +0.0048`；J3 `-2.7529 → +2.7544 → +0.0090`；J4 `-3.0150 → -0.0437 → +0.0002`；J5 `-2.7502 → +2.7506 → +0.0055`；J6 `-1.4952 → +1.4956 → +0.0048`；J7 `-1.4956 → +1.4990 → +0.0067`（rad），均在内缩 0.05 的目标内 |
 | 9 | Forge robot driver 稳定读状态并下发动作 | 待执行 | `tests/test_driver.py` + 真机 |
 | 10 | Dora 节点测试通过 | 部分 | fake 链路已验证：Python 3.12.13 + dora-cli 0.4.1，`dora run dataflow.yaml` 中 `state_print` 收到 7 轴状态，`action_source` 向 `joint7` 发 +0.05 rad 后状态更新；真机链路待阶段 2 |
@@ -41,6 +41,15 @@ env -u PYTHONPATH .venv/bin/python -m pytest -q
 env -u PYTHONPATH .venv/bin/robot-litearm probe --fake
 cd examples/02_dora_tests && env -u PYTHONPATH PATH="$HOME/.dora/bin:$PATH" dora run dataflow.yaml
 ```
+
+## 仿真验证记录（2026-11-05）
+
+- 运行：`/home/qql/sl/litearm-mujoco/.venv/bin/python offline_sweep.py`（MuJoCo 3.17.0），
+  加载 `assets/mjcf/scene.xml`。
+- 第 6 项：`nq=nu=7`；joint 名称/顺序/轴/限位与 URDF 逐项一致；7 轴正向命令 `q` 均正向变化。
+- 第 7 项：21 航点（7 轴 × min/max/zero，其余关节保持 0）全部 `reached=true`，容差 0.02 rad；
+  合计 28/28，记录 `examples/03_workflows/sim_basic_motion/validation_output/sim_sweep.jsonl`。
+- 驱动器为力矩 `motor`，脚本用固件 kp/kd/tau_max 做 PD + 重力补偿；目标角与真机 sweep 一致。
 
 ## 阶段 2 真机动作记录（2026-11-05）
 

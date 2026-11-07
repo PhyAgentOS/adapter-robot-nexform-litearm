@@ -375,6 +375,89 @@ python3 <lite-vr>/litearm-vr-bridge/scripts/fake_headset.py \
   要做实数：称重得质量；或拆下夹爪采空载基线后跑差分辨识。
 - 证据 `validation_output/payload_check.json`。
 
+## 控制面记录（fake 驱动，2026-11-06）
+
+环境：本机 Python 3.12 venv（editable 安装本包）、`dora-rs 0.4.1`，
+`robot.args = python -u -m litearm_robot.main run --fake --debug`。
+**未接硬件**，以下全部为 fake 驱动结果。
+
+### 1. `enable` → `home` → `disable`
+
+`dataflow.control.yaml`，`control_source --command enable --command home
+--command disable --delay 1.0 --exit-after 1.0`。
+
+| 观测点 | 结果 |
+|---|---|
+| `control_status` 序列 | `enable accepted` / `enable done` / `home accepted` / `home done` / `disable accepted` / `disable done` |
+| 起始 `robot_status` | `enabled=True`、`faulted=False` |
+| 结束 `robot_status` | `enabled=False` |
+| `state` 流 | 持续发布，`state_print` 正常退出 |
+| 错误日志 | 无 |
+
+### 2. `emergency_stop` → `reset` → `enable`
+
+| 步骤 | `robot_status` |
+|---|---|
+| `emergency_stop` 后 | `mode=EMERGENCY`、`faulted=True` |
+| `reset` 后 | `mode=INIT`、`faulted=False` |
+| `enable` 后 | `enabled=True` |
+
+### 3. `action` 的 `speed` 列
+
+`action_source.py --joint joint7 --delta 0.05 --speed 0.5`：
+
+- robot 节点 debug：`收到 action sample=... speed=0.5`；
+- driver debug：`target={...} speed=0.5`，即 `movej_sync` 使用 0.5 而非
+  `config.speed`。
+
+### 4. 测试
+
+`env -u PYTHONPATH .venv/bin/python -m pytest -q` → 46 passed
+（新增控制面/速度/配置共 23 条；`tests/test_control.py` 覆盖消息编解码与校验）。
+
+### 未验证
+
+真机控制面未运行。`home` 整臂回零、`stop` 保持位姿、`emergency_stop` 的
+固件锁存与 `reset` 恢复均只在 fake 驱动上验证；真机执行前须确认周围无人、
+姿态有支撑，步骤见 `examples/02_dora_tests/README.md`「运行（真机）」。
+
+## forge_bridge 记录（fake 驱动，2026-11-06）
+
+环境同上一节；dataflow 为 `examples/04_forge_bridge/dataflow.bridge.yaml`
+（robot `--fake`，bridge `--port 9005`），客户端为
+`examples/04_forge_bridge/bridge_client.py`。**未接硬件**。
+
+启动后 `state` 显示 `valid=true`、`age_s≈0.004`、7 轴全零、
+`enabled=true`、`mode=INIT`、`faulted=false`（fake 配置
+`enable_on_connect: true`）。
+
+| 命令 | 结果 |
+|---|---|
+| `ping` | `ok=true`、`pong=true` |
+| `movej 0.1 0.1 0.1 0 0.1 0.1 0.1 --speed 0.2` | `ok=true`、`settled=true`、`elapsed_s≈0.028`；`target_q` 与输入一致、`clipped=false` |
+| `gripper 0.05` | 协议层 `ok=true`、`opening_m=0.05`；robot 节点日志 `拒绝 action: gripper is disabled in config`（fake 为 `NullGripper`，见下） |
+| `home 30` | `ok=true`、`status=done`、`home complete (timeout=30s)`；随后 `state` 回到 7 轴全零 |
+| `estop` | `ok=true`、`status=done`、`command=emergency_stop`；随后 `state` 为 `mode=EMERGENCY`、`faulted=true`、`faults=EMERGENCY`、`enabled=false` |
+| `reset` → `enable` → `disable` → `stop` | 均 `ok=true`、`status=done`；`reset` 后恢复 `INIT`，`enable` 后 `enabled=true` |
+| 未知命令 / 坏 JSON / 超长行 / 未启动事件循环 | 返回 `ok=false` 与对应错误；超长行断开连接 |
+
+TCP 层使用真实 socket 测试（`--port 0` 自动选端口），覆盖 `state` 往返、
+`id` 回显和坏 JSON。`movej` 的到位/超时、`control_status` 的
+`accepted`→`done` 关联、`estop` 别名、分发超时均在 `tests/test_bridge.py`
+中用 FakeNode 驱动验证。
+
+测试：`env -u PYTHONPATH .venv/bin/python -m pytest -q` → **74 passed**
+（新增 `tests/test_bridge.py` 28 条，含参数化）。
+
+### 未验证 / 限制
+
+- 真机未运行；`movej` 的真实到位时间受 `movej_sync` 与 `q_tol` 影响，
+  fake 下约 0.03 s，不代表真机。
+- fake 夹爪为 `NullGripper`，`gripper` 的 `ok` 只表示 action 已下发，
+  实际被 robot 节点拒绝；真实夹爪行为需真机 `gripper.enabled: true`。
+- 桥没有 action 级回执，驱动侧拒绝其它 action 时同样只能看到“已下发”。
+- 协议无鉴权，默认只绑定 `127.0.0.1`。
+
 ## 已知限制与差距
 
 1. 实机 `Litearm1.11.0-7J` 的固件源码未归档（已归档参考源码 `Litearm1.10.5-7J`，

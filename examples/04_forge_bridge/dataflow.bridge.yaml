@@ -1,0 +1,39 @@
+# forge_bridge：机器人节点 + TCP/JSON 桥接节点
+#
+# 运行（本机 fake，无硬件）：
+#   cd examples/04_forge_bridge
+#   PATH=$PWD/../../.venv/bin:$HOME/.dora/bin:$PATH dora run dataflow.bridge.yaml
+#   # 另开一个终端
+#   ../../.venv/bin/python bridge_client.py
+#
+# 真机：把 robot 的 args 改成
+#   "-u -m litearm_robot.main run --config ../../config/robot.yaml"
+# 并先完成 examples/01_sdk_tests 的只读检查。home 会让整臂回零位，
+# 必须确认周围无人、姿态有支撑后再调用。
+#
+# 桥接节点只认 state/robot_status/control_status，并通过 action/control
+# 回写给 robot；20ms 的 tick 同时驱动状态回传和 outbox 冲刷。
+
+nodes:
+  - id: robot
+    path: python
+    args: "-u -m litearm_robot.main run --fake"
+    inputs:
+      tick: dora/timer/millis/20
+      action: bridge/action
+      control: bridge/control
+    outputs:
+      - state
+      - robot_status
+      - control_status
+
+  - id: bridge
+    path: python
+    args: "-u -m litearm_robot.bridge --port 9005"
+    inputs:
+      state: robot/state
+      robot_status: robot/robot_status
+      control_status: robot/control_status
+    outputs:
+      - action
+      - control

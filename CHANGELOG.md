@@ -18,6 +18,11 @@ All notable changes to this project are documented here. The format follows
 - VR→Dora bridge (`vr_bridge_dora.py`) that accepts lite-vr's
   `arm_follow_server` TCP/JSON protocol and publishes Forge `JointCommand`;
   validated end-to-end in simulation with lite-vr teleop and `mujoco_sim`.
+- Optional `control` input (`enable`/`disable`/`reset`/`home`/`stop`/
+  `emergency_stop`) with `control_status` receipts, plus an optional `speed`
+  column on `action` that overrides `config.speed`.
+- `robot-litearm-bridge`, a line-oriented TCP/JSON bridge over the Dora
+  ports, with an example dataflow, client, and protocol documentation.
 
 ### Known limitations
 
@@ -28,3 +33,5 @@ All notable changes to this project are documented here. The format follows
   (`1.11.0-7J`) than the current bench arm (`1.10.1-7J`).
 - The VR→Dora bridge has not yet been run against the real arm; on-site VR
   checks used lite-vr's native follow path.
+- The control plane and the TCP/JSON bridge were validated on the fake driver
+  only; real-arm motion, gripper, and emergency-stop behavior are untested.

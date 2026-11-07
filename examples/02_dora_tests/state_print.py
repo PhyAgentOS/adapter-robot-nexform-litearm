@@ -10,6 +10,7 @@ import time
 
 from dora import Node
 from forge_msgs import JointState
+from forge_msgs.arrow import ensure_record_batch
 
 logger = logging.getLogger("state_print")
 
@@ -26,12 +27,30 @@ def main(argv: list[str] | None = None) -> int:
 
     node = Node()
     last_print = 0.0
+    last_status = 0.0
     count = 0
 
     for event in node:
         if event["type"] in ("STOP", "ERROR"):
             break
-        if event["type"] != "INPUT" or event["id"] != "state":
+        if event["type"] != "INPUT":
+            continue
+
+        if event["id"] == "robot_status":
+            batch = ensure_record_batch(event["value"])
+            now = time.monotonic()
+            if now - last_status < args.every:
+                continue
+            last_status = now
+            logger.info(
+                "status enabled=%s mode=%s faulted=%s faults=%s",
+                bool(batch["enabled"][0].as_py()),
+                batch["mode"][0].as_py(),
+                bool(batch["faulted"][0].as_py()),
+                batch["faults"][0].as_py() or "-",
+            )
+            continue
+        if event["id"] != "state":
             continue
 
         state = JointState.from_arrow(event["value"])

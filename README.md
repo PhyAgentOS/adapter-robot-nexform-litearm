@@ -122,9 +122,32 @@ python examples/01_sdk_tests/gripper_open_close.py --execute
 ```bash
 cd examples/02_dora_tests
 PATH=$HOME/.dora/bin:$PATH dora run dataflow.yaml
+PATH=$HOME/.dora/bin:$PATH dora run dataflow.control.yaml   # enable/home/disable
 ```
 
 先用 `--fake` 验证端口；真机配置需人工确认后再运行。
+
+控制面通过 `control` 输入发送 `enable` / `disable` / `reset` / `home` / `stop` /
+`emergency_stop`，回执在 `control_status`；`action` 支持可选的 `speed` 扩展列
+（0..1）。语义见 [`docs/parameters.md` §7](docs/parameters.md)，fake 结果见
+[`docs/validation.md`](docs/validation.md)「控制面记录」。
+
+### 7.1 forge_bridge（TCP/JSON）
+
+`examples/04_forge_bridge/` 把同一组端口暴露成一行一个 JSON 的 TCP 服务，
+供 Forge Skill Gateway 或非 Python 调用方使用：
+
+```bash
+cd examples/04_forge_bridge
+PATH="$PWD/../../.venv/bin:$HOME/.dora/bin:$PATH" dora run dataflow.bridge.yaml
+# 另开终端
+../../.venv/bin/python bridge_client.py                 # 交互式
+../../.venv/bin/python bridge_client.py movej 0 0 0 0 0 0 0 --speed 0.2
+```
+
+请求命令：`state`/`status`、`movej`、`gripper`、`home`、`stop`、`enable`、
+`disable`、`reset`、`estop`、`ping`；详情与线程模型见
+[`docs/bridge.md`](docs/bridge.md)。桥默认只监听 `127.0.0.1:9005`，无鉴权。
 
 ## 8. 仿真 workflow
 
@@ -234,6 +257,9 @@ MDH 已由 URDF 反推，见 [`docs/mdh.md`](docs/mdh.md)；`t_ee=[-0.0071,-0.02
    `dataflow.example.yaml` 复用同一桥，但尚未在真机跑过（第 13 项的真机确认是
    用户直接用 lite-vr 原生链路完成的）。现场部署时 teleop 的臂侧地址要指向
    桥的 `:9001`。
+10. `forge_bridge` 只在 fake 驱动上做过端到端验证；真机运动/夹爪未跑。协议
+    无鉴权，默认只绑定 `127.0.0.1`；`movej`/`gripper` 的 `ok` 只表示 action
+    已下发，没有 action 级回执。
 
 ## 目录结构
 
@@ -241,14 +267,15 @@ MDH 已由 URDF 反推，见 [`docs/mdh.md`](docs/mdh.md)；`t_ee=[-0.0071,-0.02
 adapter-robot-nexform-litearm/
 ├── assets/{urdf,meshes,mjcf,glb}/
 ├── config/{robot,vr}.example.yaml
-├── docs/{parameters,joint_table,hardware,validation,mdh}.md
+├── docs/{parameters,joint_table,hardware,bridge,validation,mdh}.md
 ├── examples/
 │   ├── 01_sdk_tests/
 │   ├── 02_dora_tests/
-│   └── 03_workflows/{sim_basic_motion,real_basic_motion,
-│                      homomorphic_control,vr_teleoperation}/
+│   ├── 03_workflows/{sim_basic_motion,real_basic_motion,
+│   │                  homomorphic_control,vr_teleoperation}/
+│   └── 04_forge_bridge/
 ├── scripts/{validate_assets.py,urdf_to_mdh.py,build_entry.py,build_pyinstaller.sh}
-├── src/litearm_robot/{config,codec,driver,gripper,fake,main}.py
+├── src/litearm_robot/{config,codec,driver,gripper,fake,control,node,bridge,main}.py
 └── tests/
 ```
 

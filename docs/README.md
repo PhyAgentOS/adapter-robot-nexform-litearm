@@ -11,6 +11,7 @@
 ## 参考
 
 - [硬件与接线](hardware.md)：通信、供电、急停与现场接线。
+- [TCP/JSON 桥](bridge.md)：`forge_bridge` 协议、线程模型、参数与限制。
 - [MDH 推导](mdh.md)：由 URDF 反推 MDH 及 FK 对拍结果。
 - [厂商手册归档](vendor/litearm-docs/README.md)：产品手册与软件开发手册。
 - [资产来源与校验](../assets/README.md)：URDF/MJCF/GLB 来源、转换记录与 SHA-256 台账。

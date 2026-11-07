@@ -27,6 +27,7 @@ build = ["pyinstaller>=6.0"]
 
 [project.scripts]
 robot-litearm = "litearm_robot.main:main"
+robot-litearm-bridge = "litearm_robot.bridge:main"
 
 [tool.setuptools]
 license-files = ["LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md"]

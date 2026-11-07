@@ -1,7 +1,8 @@
 """节点入口。
 
-无子命令 = 运行 Dora 机器人节点（标准 runner）。
+无子命令 = 运行 Dora 机器人节点（标准输入 + `control` 扩展，见 node.py）。
 probe = 只读状态，不进入 Dora，不做任何运动。
+home = 独立回零，不进 Dora。
 """
 
 from __future__ import annotations
@@ -25,18 +26,12 @@ def _make_driver(config_path: str | None, *, fake: bool = False) -> LitearmDrive
 
 
 def _run_node(config_path: str | None, *, fake: bool = False) -> int:
-    from forge_robot.node_runner import run_dora_robot_node
+    from .node import run_node
 
     driver = _make_driver(config_path, fake=fake)
-    config = driver.config
     driver.connect()
     try:
-        return run_dora_robot_node(
-            driver,
-            joint_order=driver.joint_order,
-            is_follower=True,
-            debug=config.debug,
-        )
+        return run_node(driver, debug=driver.config.debug)
     finally:
         driver.disconnect()
 

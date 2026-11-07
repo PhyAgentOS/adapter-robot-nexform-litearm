@@ -14,6 +14,7 @@ def test_load_example_config():
     config = load_config(ROOT / "config/robot.example.yaml")
     assert config.joint_order == JOINT_ORDER
     assert 0.0 < config.speed <= 0.2
+    assert config.home_timeout_s == 180.0
     assert config.gripper.can_id == 0x08
     assert config.gripper.mst_id == 0x18
 
@@ -34,6 +35,13 @@ def test_rejects_wrong_joint_order(tmp_path):
 def test_rejects_out_of_range_speed(tmp_path):
     path = tmp_path / "fast.yaml"
     path.write_text("speed: 1.5\n", encoding="utf-8")
+    with pytest.raises(ValueError):
+        load_config(path)
+
+
+def test_rejects_non_positive_home_timeout(tmp_path):
+    path = tmp_path / "home.yaml"
+    path.write_text("home_timeout_s: 0\n", encoding="utf-8")
     with pytest.raises(ValueError):
         load_config(path)
 

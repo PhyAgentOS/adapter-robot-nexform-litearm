@@ -130,11 +130,79 @@
 - [x] `home()` 前/后的 `q` 回读（零位对照）：2026-11-05 在零位附近执行，前后 7 轴 `q` 完全一致（`max|Δ|=0`），`flags=[]`、`joint_fault=0`、`err=1`
 - [x] 夹爪 `position_mm` / `force_n` / 温度 / `error_code`：2026-11-05 `enable()` 后实测，见 §4.1
 
-## 7. 变更记录
+## 7. 适配器参数与控制面
+
+适配器自有参数（不是机械臂或夹爪参数）：
+
+| 参数 | 默认 | 约束 | 说明 |
+|---|---|---|---|
+| `speed` | `0.2` | `0..1` | 下发目标时的默认 SDK 速度倍率 |
+| `home_timeout_s` | `180.0` | `> 0` | `control` 的 `home` 命令超时；超时后回执 `error`，驱动仍以实测角度恢复目标 |
+| `enable_on_connect` | `true` | — | 连接后调用 `enable()` |
+| `move_to_initial` | `true` | — | 连接后把首目标设为初始姿态 |
+
+### 7.1 `action` 的 `speed` 列（扩展）
+
+标准 `JointCommand` 的 `velocity` 单位是 rad/s，SDK `movej_sync(speed=...)`
+使用 0..1 归一化系数，映射关系未验证（§2）。因此速度透传不使用
+`velocity`，而是在标准六列之外追加一个可选 `float64` 列 `speed`：
+
+| 输入 | 行为 |
+|---|---|
+| 列不存在 | 使用 `config.speed` |
+| `0 <= speed <= 1` | 作为本次目标的 SDK 速度倍率 |
+| `speed > 1` | 截断为 `1.0` |
+| 负数 / `NaN` / `inf` | 记录警告，回退到 `config.speed` |
+
+Forge 标准校验默认允许额外列（`strict_extra_columns=False`），只发标准
+`JointCommand` 的节点不受影响。
+
+### 7.2 `control` 命令
+
+端口 `control`，消息 `ControlRequest`（列 `command`、`request_id`、
+`timeout_s`，单行）。节点回执 `control_status`（列 `command`、`request_id`、
+`status`、`message`），`status` 取值 `accepted` / `done` / `rejected` / `error`。
+
+| 命令 | SDK 调用 | 执行方式 | 说明 |
+|---|---|---|---|
+| `enable` | `enable()` | 队列 | 恢复使能并重建运动 worker |
+| `disable` | `disable()` | 内联 | 取消排队目标后失能 |
+| `reset` | `reset()` | 队列 | 清除 `EMERGENCY` / 故障锁存 |
+| `home` | `home(timeout=home_timeout_s)` | 队列 | 整臂回零；期间取消后台 worker |
+| `stop` | 以实测角度 `movej_sync` | 队列 | 取消排队目标，保持当前位置，保持使能 |
+| `emergency_stop` | `emergency_stop()`（CMD 0x12） | 内联 | 立即急停；固件锁存 `EMERGENCY` + 故障位 |
+
+`disable` 与 `emergency_stop` 在事件循环内同步执行，不会被队列里前面的
+`home` 阻塞。队列容量 1，忙时普通命令回执 `rejected`。`emergency_stop`
+造成的锁存只能用 `reset()` 清除，`disable()` 无效（固件行为，见
+`docs/validation.md`）。`stop` 的前提是驱动已使能；未使能时回执 `error`。
+
+### 7.3 `forge_bridge`（TCP/JSON）
+
+`robot-litearm-bridge` 把上面的端口包装成一行一个 JSON 的 TCP 服务，
+协议与消息格式见 [`docs/bridge.md`](bridge.md)。
+
+| CLI | 默认 | 说明 |
+|---|---|---|
+| `--host` | `127.0.0.1` | 监听地址；非回环会告警，协议无鉴权 |
+| `--port` | `9005` | TCP 端口 |
+| `--state-timeout` | `0.5` | `state` 的 `valid` 年龄上限，秒 |
+| `--settle-tol` | `0.01` | `movej` 到位容差，rad |
+| `--settle-timeout` | `20.0` | `movej` 默认等待上限，秒 |
+| `--control-timeout` | `10.0` | 非 `home` 控制命令回执超时，秒 |
+| `--home-timeout` | `180.0` | `home` 缺省超时，秒 |
+
+`movej` 的 `speed` 列与控制面命令的语义沿用 §7.1/§7.2；桥额外要求
+`movej` 在容差内到位才算 `ok`。默认只绑定回环地址，跨机部署需显式
+`--host 0.0.0.0` 并自行加访问控制。
+
+## 8. 变更记录
 
 | 日期 | 变更 |
 |---|---|
+| 2026-11-06 | 新增 §7.3 `forge_bridge` TCP/JSON 接口参数与默认端口 9005 |
 | 2026-11-05 | 建立本表；录入 SDK 版本、固件最低版本、夹爪标定与总线参数 |
+| 2026-11-06 | 新增 §7 适配器参数：`home_timeout_s`、`action` 的 `speed` 扩展列、六个 `control` 命令 |
 | 2026-11-05 | 由 URDF 反推 MDH 并完成随机 FK 对拍（`docs/mdh.md`）；MDH 状态改为已确认 |
 | 2026-11-05 | 真机只读：固件 1.11.0-7J、软限位、`kp/kd/tau_max`、静止 `q`；J4/J5 越软限位定位为未使能自然平衡点（`POS_RECOVER_BAND`） |
 | 2026-11-05 | 归档固件参考源码 `Litearm1.10.5-7J`（`6d4dd27`）；按该源码更正 `POS_RECOVER_BAND` 为 0.30 rad（1.10.0 为 0.05） |

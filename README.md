@@ -122,7 +122,7 @@ python examples/01_sdk_tests/gripper_open_close.py --execute
 ```bash
 cd examples/02_dora_tests
 PATH=$HOME/.dora/bin:$PATH dora run dataflow.yaml
-PATH=$HOME/.dora/bin:$PATH dora run dataflow.control.yaml   # enable/home/disable
+PATH=$HOME/.dora/bin:$PATH dora run dataflow.control.yaml   # enable -> home -> disable
 ```
 
 先用 `--fake` 验证端口；真机配置需人工确认后再运行。

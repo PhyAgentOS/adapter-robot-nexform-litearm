@@ -9,7 +9,7 @@
 SDK 的 movej_sync 是阻塞式 PTP，因此 set_command 只更新目标，由后台 worker
 合并最新目标后下发；这样 Dora 的 tick/action 循环不会被单个动作阻塞。
 
-控制面方法（enable/disable/reset/home/stop/emergency_stop）由节点循环的
+控制面方法（enable、disable、reset、home、stop、emergency_stop）由节点循环的
 `control` 扩展输入调用，见 node.py。home 会阻塞十几秒，调用方必须放到工作线程。
 """
 

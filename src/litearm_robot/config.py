@@ -28,6 +28,7 @@ class RobotConfig:
     firmware_prefix: str = "Litearm"
     joint_order: tuple[str, ...] = JOINT_ORDER
     speed: float = 0.2
+    home_timeout_s: float = 180.0
     enable_on_connect: bool = True
     move_to_initial: bool = True
     move_to_reset_on_disconnect: bool = False
@@ -51,6 +52,10 @@ class RobotConfig:
                 raise ValueError(f"{label} has unknown joints: {sorted(unknown)}")
         if not 0.0 <= self.speed <= 1.0:
             raise ValueError(f"speed must be in 0..1, got {self.speed}")
+        if self.home_timeout_s <= 0.0:
+            raise ValueError(
+                f"home_timeout_s must be > 0, got {self.home_timeout_s}"
+            )
 
 
 def _section(data: Any, key: str) -> dict[str, Any]:
@@ -84,6 +89,7 @@ def load_config(path: str | Path | None = None) -> RobotConfig:
         firmware_prefix=str(data.get("firmware_prefix", "Litearm")),
         joint_order=tuple(order),
         speed=float(data.get("speed", 0.2)),
+        home_timeout_s=float(data.get("home_timeout_s", 180.0)),
         enable_on_connect=bool(data.get("enable_on_connect", True)),
         move_to_initial=bool(data.get("move_to_initial", True)),
         move_to_reset_on_disconnect=bool(

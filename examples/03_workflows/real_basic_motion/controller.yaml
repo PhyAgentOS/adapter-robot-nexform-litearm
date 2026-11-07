@@ -1,0 +1,11 @@
+# forge-joint-trajectory-controller：LiteArm 7 轴
+joint_names: [joint1, joint2, joint3, joint4, joint5, joint6, joint7]
+control_period_ms: 20
+feedback_timeout_ms: 200
+# 驱动端 SDK q_tol=0.03 rad 会提前判到位，容差须略大于它。
+start_position_tolerance: 0.10
+path_position_tolerance: 0.15
+goal_position_tolerance: 0.05
+goal_velocity_tolerance: 0.05
+goal_time_tolerance_ms: 500
+result_cache_size: 128

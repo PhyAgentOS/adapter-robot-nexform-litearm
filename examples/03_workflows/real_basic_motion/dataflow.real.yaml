@@ -1,0 +1,81 @@
+# 真机基础动作（验收清单第 11 项）：MoveJoints -> motion_server ->
+# joint_trajectory_controller -> 本仓机器人节点。
+#
+# 依赖：
+#   - PhyAgentOS Forge runtime 的 motion_server / joint_trajectory_controller
+#   - config/robot.yaml（站点专用，已被 .gitignore 忽略），speed <= 0.2
+#
+# 运行前把 FORGE_RUNTIME_BIN 指向含两个可执行文件的目录，例如：
+#   mkdir -p /tmp/forge-bin
+#   ln -sf ~/.PhyAgentOS/forge_runtime/nodes/motion_server/versions/*/motion_server \
+#          /tmp/forge-bin/motion_server
+#   ln -sf ~/.PhyAgentOS/forge_runtime/nodes/joint_trajectory_controller/versions/*/joint_trajectory_controller \
+#          /tmp/forge-bin/joint_trajectory_controller
+#   export FORGE_RUNTIME_BIN=/tmp/forge-bin
+#
+# 运行：
+#   cd examples/03_workflows/real_basic_motion
+#   PATH="$PWD/../../../.venv/bin:$HOME/.dora/bin:$PATH" \
+#     dora run dataflow.real.yaml
+#
+# 安全前置：01_sdk_tests 只读检查通过；现场有人守在硬件急停位置；
+# 姿态有支撑。默认只把 joint7 从当前角度 +0.05 rad 后停住，不自动失能。
+
+nodes:
+  - id: robot
+    path: python
+    args: "-u -m litearm_robot.main run --config ../../../config/robot.yaml"
+    inputs:
+      tick: dora/timer/millis/20
+      action: joint_trajectory_controller/joint_command
+    outputs:
+      - state
+
+  - id: joint_trajectory_controller
+    path: ${FORGE_RUNTIME_BIN}/joint_trajectory_controller
+    args: "--config controller.yaml"
+    inputs:
+      tick: dora/timer/millis/20
+      joint_state: robot/state
+      trajectory_goal: motion_server/trajectory_goal
+      trajectory_cancel: motion_server/trajectory_cancel
+    outputs:
+      - joint_command
+      - trajectory_feedback
+      - trajectory_result
+
+  - id: motion_server
+    path: ${FORGE_RUNTIME_BIN}/motion_server
+    args: "--config motion_server.yaml"
+    inputs:
+      tick: dora/timer/millis/20
+      joint_state: robot/state
+      move_joints_goal: joint_action_client/move_joints_goal
+      move_joints_cancel: joint_action_client/move_joints_cancel
+      move_pose_goal: joint_action_client/move_pose_goal
+      move_pose_cancel: joint_action_client/move_pose_cancel
+      trajectory_feedback: joint_trajectory_controller/trajectory_feedback
+      trajectory_result: joint_trajectory_controller/trajectory_result
+    outputs:
+      - move_joints_feedback
+      - move_joints_result
+      - move_pose_feedback
+      - move_pose_result
+      - trajectory_goal
+      - trajectory_cancel
+
+  - id: joint_action_client
+    path: python
+    args: "-u joint_action_client.py --joint joint7 --delta 0.05 --timeout 25"
+    inputs:
+      tick: dora/timer/millis/20
+      joint_state: robot/state
+      move_joints_feedback: motion_server/move_joints_feedback
+      move_joints_result: motion_server/move_joints_result
+      move_pose_feedback: motion_server/move_pose_feedback
+      move_pose_result: motion_server/move_pose_result
+    outputs:
+      - move_joints_goal
+      - move_joints_cancel
+      - move_pose_goal
+      - move_pose_cancel

@@ -1,0 +1,5 @@
+<!-- 仿真 workflow 入口：与 scene.xml 同一模型，执行器为 position，
+     供 operator-simulator-mujoco 直接写 ctrl。 -->
+<mujoco model="litearm_scene_position">
+  <include file="litearm7_position.xml"/>
+</mujoco>

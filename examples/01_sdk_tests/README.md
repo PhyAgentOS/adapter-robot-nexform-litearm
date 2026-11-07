@@ -22,7 +22,8 @@ uv pip install -e ".[test]"     # 仓库根目录，脚本会用到 codec 里的
 ## 顺序
 
 1. `read_state.py` —— 确认固件、关节数、err 全为 0。
-2. `move_single_joint.py --joint N --delta 0.02` 先 dry-run，核对计划。
+2. `move_single_joint.py --joint N --delta 0.05` 先 dry-run，核对计划。
+   （SDK 到位容差 `q_tol=0.03 rad`，步长 ≤0.03 会被立即判到位而不动。）
 3. 确认环境无人、姿态有支撑后加 `--execute`。
 4. `gripper_open_close.py` 同理，先 dry-run。
 5. `safety_stop.py --execute` 验证失能；**执行前必须托住**。
@@ -32,7 +33,10 @@ uv pip install -e ".[test]"     # 仓库根目录，脚本会用到 codec 里的
 - 单次步进 ≤ 0.05 rad，速度 ≤ 0.2（脚本会拒绝超限）。
 - 动作后默认失能，避免静止保持发热（台架经验：J6 长时保持会过温）。
 - `disable()` 会失去保持力；`gripper.stop()` 会掉力矩。
-- 未有支撑时不要执行任何失能动作。
+- 未有支撑时不要执行任何失能动作。实测在 J1≈0 的折叠位姿失能，臂会下坠并触发
+  `joint_fault=127` / `EMERGENCY`（见 `docs/validation.md`）。
+- 大幅 sweep 期间保持使能；结束只关闭连接（固件 watchdog fail-soft 持位），不要
+  在无支撑位姿调用 `disable()`。
 
 ## 真机证据记录
 

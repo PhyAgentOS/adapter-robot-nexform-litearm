@@ -1,7 +1,8 @@
 """节点入口。
 
-无子命令 = 运行 Dora 机器人节点（标准 runner）。
+无子命令 = 运行 Dora 机器人节点（标准输入 + `control` 扩展，见 node.py）。
 probe = 只读状态，不进入 Dora，不做任何运动。
+home = 独立回零，不进 Dora。
 """
 
 from __future__ import annotations
@@ -25,18 +26,12 @@ def _make_driver(config_path: str | None, *, fake: bool = False) -> LitearmDrive
 
 
 def _run_node(config_path: str | None, *, fake: bool = False) -> int:
-    from forge_robot.node_runner import run_dora_robot_node
+    from .node import run_node
 
     driver = _make_driver(config_path, fake=fake)
-    config = driver.config
     driver.connect()
     try:
-        return run_dora_robot_node(
-            driver,
-            joint_order=driver.joint_order,
-            is_follower=True,
-            debug=config.debug,
-        )
+        return run_node(driver, debug=driver.config.debug)
     finally:
         driver.disconnect()
 
@@ -63,6 +58,27 @@ def _probe(config_path: str | None, *, fake: bool = False) -> int:
     return 0
 
 
+def _home(config_path: str | None, *, timeout: float, fake: bool = False) -> int:
+    driver = _make_driver(config_path, fake=fake)
+    driver.connect()
+    try:
+        driver.home(timeout=timeout)
+        state = driver.get_state()
+        print(
+            json.dumps(
+                {
+                    "name": state.name,
+                    "position": state.position,
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+    finally:
+        driver.disconnect()
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="robot-litearm")
     parser.add_argument("--config", default=None, help="YAML 配置文件路径")
@@ -78,6 +94,11 @@ def main(argv: list[str] | None = None) -> int:
     probe.add_argument("--config", default=None)
     probe.add_argument("--fake", action="store_true", help="使用 FakeArm")
 
+    home = sub.add_parser("home", help="固件 home() 回零位（低速）")
+    home.add_argument("--config", default=None)
+    home.add_argument("--timeout", type=float, default=180.0)
+    home.add_argument("--fake", action="store_true", help="使用 FakeArm")
+
     args = parser.parse_args(argv)
     logging.basicConfig(
         level=logging.DEBUG if args.debug else logging.INFO,
@@ -86,6 +107,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "probe":
         return _probe(args.config, fake=args.fake)
+    if args.command == "home":
+        return _home(args.config, timeout=args.timeout, fake=args.fake)
     if args.command == "run":
         return _run_node(args.config, fake=args.fake)
     return _run_node(args.config, fake=getattr(args, "fake", False))

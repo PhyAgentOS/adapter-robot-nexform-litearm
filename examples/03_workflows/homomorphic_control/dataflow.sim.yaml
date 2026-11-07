@@ -1,0 +1,46 @@
+# 同构控制 - 仿真链路（验收清单第 12 项）
+#
+# master_trajectory (JointState) -> mirror_command (JointCommand position)
+#   -> mujoco_sim -> proprio_state -> state_recorder
+#
+# 运行：
+#   cd examples/03_workflows/homomorphic_control
+#   MUJOCO_GL=egl \
+#   PATH="$PWD/../../../.venv/bin:$HOME/.dora/bin:$HOME/.PhyAgentOS/forge_runtime/nodes/mujoco_sim/versions/mujoco_sim-1.1.1-linux-x86_64-tar-gz:$PATH" \
+#   env -u PYTHONPATH dora run dataflow.sim.yaml
+#
+# 一条轨迹约 16 s；记录写满后前台 Ctrl-C 退出（dora run 不会自行结束）。
+
+nodes:
+  - id: master_trajectory
+    path: python
+    args: "-u master_trajectory.py --hold 1.0 --ramp 4.0"
+    inputs:
+      tick: dora/timer/millis/50
+    outputs:
+      - state
+
+  - id: mirror_command
+    path: python
+    args: "-u mirror_command.py"
+    inputs:
+      master: master_trajectory/state
+    outputs:
+      - action
+
+  - id: mujoco
+    path: mujoco_sim
+    args: "--config simulator.yaml"
+    inputs:
+      tick: dora/timer/millis/20
+      action: mirror_command/action
+    outputs:
+      - proprio_state
+
+  - id: state_recorder
+    path: python
+    args: "-u state_recorder.py --output validation_output/homomorphic_sim.jsonl"
+    inputs:
+      tick: dora/timer/millis/50
+      master: master_trajectory/state
+      follower: mujoco/proprio_state

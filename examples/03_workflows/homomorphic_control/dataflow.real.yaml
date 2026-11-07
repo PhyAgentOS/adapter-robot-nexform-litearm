@@ -1,0 +1,48 @@
+# 同构控制 - 真机链路（验收清单第 12 项）
+#
+# master_trajectory (JointState) -> litearm_robot 标准 runner 的 master_state
+#   -> 内建镜像为 JointCommand(position) -> 真机
+#
+# 前置：
+#   1. 先跑 dataflow.sim.yaml 确认方向；
+#   2. 只读采样当前位姿，作为主臂基准（避免把臂拉向零位）：
+#        PATH="$PWD/../../../.venv/bin:$PATH" \
+#          python -m litearm_robot.main probe --config ../../../config/robot.yaml \
+#          > validation_output/real_base.json
+#   3. config/robot.yaml 的 speed <= 0.2、enable_on_connect: true；
+#      现场有人守在急停位置，臂的工作空间内无人员和障碍。
+#
+# 运行：
+#   cd examples/03_workflows/homomorphic_control
+#   PATH="$PWD/../../../.venv/bin:$HOME/.dora/bin:$PATH" \
+#     dora run dataflow.real.yaml
+#
+# 结束必须前台 Ctrl-C，让 robot 节点正常收尾（driver.disconnect() -> close()
+# 保持使能持位）；禁止 timeout/kill 强杀，否则会失去保持力矩（见
+# docs/validation.md 第 11 项事故记录）。
+
+nodes:
+  - id: master_trajectory
+    path: python
+    args: "-u master_trajectory.py --hold 1.0 --ramp 4.0 --start-delay 3.0 --base-file validation_output/real_base.json"
+    inputs:
+      tick: dora/timer/millis/50
+    outputs:
+      - state
+
+  - id: follower_robot
+    path: python
+    args: "-u -m litearm_robot.main run --config ../../../config/robot.yaml"
+    inputs:
+      tick: dora/timer/millis/20
+      master_state: master_trajectory/state
+    outputs:
+      - state
+
+  - id: state_recorder
+    path: python
+    args: "-u state_recorder.py --output validation_output/homomorphic_real.jsonl"
+    inputs:
+      tick: dora/timer/millis/50
+      master: master_trajectory/state
+      follower: follower_robot/state

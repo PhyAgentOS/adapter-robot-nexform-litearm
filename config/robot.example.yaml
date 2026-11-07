@@ -18,7 +18,10 @@ joint_order:
   - gripper
 
 # 0..1，传给 SDK 的归一化速度；首次真机验收建议 <= 0.2。
+# action 载荷可用额外列 speed 按条覆盖，缺省用这里的值。
 speed: 0.2
+# control 命令 home 的默认超时（秒）；固件回零约 18 s，留足余量。
+home_timeout_s: 180.0
 
 enable_on_connect: true
 move_to_initial: true

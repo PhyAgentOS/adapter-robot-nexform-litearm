@@ -1,0 +1,37 @@
+# Dora 控制面测试：fake 驱动 + control 命令源 + 状态/回执消费者
+#
+# 运行：
+#   cd examples/02_dora_tests
+#   PATH=$HOME/.dora/bin:$PATH dora run dataflow.control.yaml
+#
+# 命令序列 enable -> home -> disable；fake 驱动下 home 立即完成。
+# 真机运行前先完成 examples/01_sdk_tests，并把 robot 的 args 改成真机配置；
+# home 会让整臂回零位，必须确认周围无人、姿态有支撑。
+
+nodes:
+  - id: robot
+    path: python
+    args: "-u -m litearm_robot.main run --fake --debug"
+    inputs:
+      tick: dora/timer/millis/20
+      control: control_source/control
+    outputs:
+      - state
+      - robot_status
+      - control_status
+
+  - id: control_source
+    path: python
+    args: "-u control_source.py --command enable --command home --command disable --delay 1.0 --exit-after 1.0"
+    inputs:
+      tick: dora/timer/millis/100
+      control_status: robot/control_status
+    outputs:
+      - control
+
+  - id: state_print
+    path: python
+    args: "-u state_print.py --every 0.5"
+    inputs:
+      state: robot/state
+      robot_status: robot/robot_status

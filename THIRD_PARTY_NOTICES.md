@@ -25,6 +25,16 @@ The delivered URDF was adjusted to use repository-relative mesh paths.
 retains the same upstream attribution. Conversion details are recorded in
 `assets/glb/README.md`.
 
+## LiteArm product and software development manuals
+
+- Paths: `docs/vendor/litearm-docs/`
+- Source: `nexform-tech/litearm-docs`, commit `483b825`
+- Version: V1.0.4, 2026-10-16
+- License: Apache-2.0
+
+The PDFs are archived unmodified for acceptance evidence; the upstream
+repository remains the source of record.
+
 ## VR teleoperation parameters
 
 - Paths: `config/vr.example.yaml`

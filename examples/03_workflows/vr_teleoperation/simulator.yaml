@@ -1,0 +1,29 @@
+# VR 桥仿真验证用的 mujoco_sim 配置。
+# 与 ../sim_basic_motion/simulator.yaml 相同：position 执行器 + gravcomp 的
+# scene_position.xml，mujoco_sim 直接把目标角写入 ctrl。
+# model_path 相对 dora dataflow 目录（本目录）解析。
+
+model_path: ../../../assets/mjcf/scene_position.xml
+control_hz: 50
+
+joints:
+  - { name: joint1, mode: position, unit: radians }
+  - { name: joint2, mode: position, unit: radians }
+  - { name: joint3, mode: position, unit: radians }
+  - { name: joint4, mode: position, unit: radians }
+  - { name: joint5, mode: position, unit: radians }
+  - { name: joint6, mode: position, unit: radians }
+  - { name: joint7, mode: position, unit: radians }
+
+robots:
+  - id: robot_0
+    joints: [joint1, joint2, joint3, joint4, joint5, joint6, joint7]
+    actuator_order: [motor1, motor2, motor3, motor4, motor5, motor6, motor7]
+    joint_to_actuator:
+      joint1: motor1
+      joint2: motor2
+      joint3: motor3
+      joint4: motor4
+      joint5: motor5
+      joint6: motor6
+      joint7: motor7

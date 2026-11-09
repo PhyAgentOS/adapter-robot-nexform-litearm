@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-05",
+  "case": "VR teleoperation simulation (lite-vr teleop, pybullet)",
+  "scope": "Validates the VR chain (controller pose -> mapping -> IK -> joint targets -> simulated TCP) in simulation. Real-machine behavior was confirmed on site by the user; the adapter's Dora VR dataflow remains a structural template (real lite-vr path is zenoh/TCP).",
+  "source": "lite-vr (external)",
+  "environment": "conda metavr-arm, pybullet GUI, --source ws",
+  "commands": {
+    "teleop": "python3 launch/run_teleop_webxr.py --source ws --host 127.0.0.1 --port 8765 --no-real --viewer gui --probe <probe.jsonl>",
+    "fake_headset_translation": "python3 litearm-vr-bridge/scripts/fake_headset.py --host 127.0.0.1 --port 8765 --pattern circle --radius 0.03 --period 4 --duration 12",
+    "fake_headset_rotation": "python3 fake_headset_rot.py --amp-deg 20 --period 6 --duration 12 (90 Hz, right controller yaw)"
+  },
+  "translation_run": {
+    "probe": "vr_sim_translation_probe.jsonl",
+    "frames": 612,
+    "duration_s": 10.93,
+    "rate_hz": 56.0,
+    "hand_range_m": [0.06, 0.0, 0.06],
+    "ee_range_m": [0.06, 0.0601, 0.0001],
+    "scale": {"hand_x_to_ee_x": 1.0, "hand_z_to_ee_y": 1.002},
+    "axis_mapping": "hand +x -> robot +x; hand +z -> robot -y (matches translation_remap applied as its transpose: rel = M.T @ hand_delta)",
+    "ee_vs_command_direction_cosine": {"mean": 0.999, "p10": 0.997},
+    "cross_axis_correlation_max": 0.081,
+    "ee_vs_target_max_axis_error_m": 0.0006,
+    "rest_orientation_drift_deg": {"max": 0.174, "mean": 0.103},
+    "ik": {"ok": 612, "total": 612, "clipped": 0}
+  },
+  "rotation_run": {
+    "probe": "vr_sim_rotation_probe.jsonl",
+    "frames": 574,
+    "duration_s": 10.39,
+    "rate_hz": 55.2,
+    "hand_yaw_range_deg": 40.0,
+    "ee_local_rotation_range_deg": 39.82,
+    "dominant_local_axis_abs_mean": [0.2044, 0.7683, 0.4015],
+    "sign": "opposite to hand yaw, consistent with rotation_signs[1] = -1",
+    "max_per_frame_rotation_deg": 2.058,
+    "ik": {"ok": 566, "total": 574, "clipped": 0}
+  }
+}

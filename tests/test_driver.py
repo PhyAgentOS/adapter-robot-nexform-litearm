@@ -139,5 +139,136 @@ def test_emergency_stop_disables_arm():
     try:
         driver.emergency_stop()
         assert arm.enabled is False
+        assert arm.mode_name == "EMERGENCY"
+        assert driver.get_status().faulted is True
+    finally:
+        driver.disconnect()
+
+
+def test_command_speed_override():
+    driver = _driver()
+    arm = driver._arm
+    try:
+        driver.set_command(
+            JointCommand(name=["joint1"], position=[0.1]), speed=0.5
+        )
+        assert _wait_for(lambda: arm.last_speed == pytest.approx(0.5))
+    finally:
+        driver.disconnect()
+
+
+def test_command_uses_config_speed_by_default():
+    driver = _driver()
+    arm = driver._arm
+    try:
+        driver.set_command(JointCommand(name=["joint1"], position=[0.1]))
+        assert _wait_for(lambda: arm.last_speed == pytest.approx(0.2))
+    finally:
+        driver.disconnect()
+
+
+def test_command_speed_is_clamped_to_one():
+    driver = _driver()
+    arm = driver._arm
+    try:
+        driver.set_command(
+            JointCommand(name=["joint1"], position=[0.1]), speed=2.5
+        )
+        assert _wait_for(lambda: arm.last_speed == pytest.approx(1.0))
+    finally:
+        driver.disconnect()
+
+
+@pytest.mark.parametrize("bad", [-0.1, float("nan"), float("inf")])
+def test_command_rejects_invalid_speed(bad):
+    driver = _driver()
+    try:
+        with pytest.raises(ValueError):
+            driver.set_command(
+                JointCommand(name=["joint1"], position=[0.1]), speed=bad
+            )
+    finally:
+        driver.disconnect()
+
+
+def test_disable_stops_commands_until_enable():
+    driver = _driver()
+    try:
+        driver.disable()
+        assert driver._worker is None
+        with pytest.raises(RuntimeError):
+            driver.set_command(
+                JointCommand(name=["joint1"], position=[0.1])
+            )
+
+        driver.enable()
+        driver.set_command(JointCommand(name=["joint1"], position=[0.1]))
+        assert _wait_for(
+            lambda: driver.get_state().position[0] == pytest.approx(0.1)
+        )
+    finally:
+        driver.disconnect()
+
+
+def test_reset_clears_emergency_latch():
+    driver = _driver()
+    try:
+        driver.emergency_stop()
+        driver.reset()
+        status = driver.get_status()
+        assert status.mode == "INIT"
+        assert status.faulted is False
+
+        driver.enable()
+        driver.set_command(JointCommand(name=["joint1"], position=[0.2]))
+        assert _wait_for(
+            lambda: driver.get_state().position[0] == pytest.approx(0.2)
+        )
+    finally:
+        driver.disconnect()
+
+
+def test_home_restores_command_path():
+    driver = _driver()
+    arm = driver._arm
+    try:
+        driver.set_command(JointCommand(name=["joint1"], position=[0.3]))
+        assert _wait_for(lambda: arm.q[0] == pytest.approx(0.3))
+
+        driver.home(timeout=5.0)
+        assert arm.home_count == 1
+        assert arm.last_speed == pytest.approx(0.1)
+        assert driver.get_state().position[0] == pytest.approx(0.0)
+
+        driver.set_command(JointCommand(name=["joint1"], position=[0.1]))
+        assert _wait_for(
+            lambda: driver.get_state().position[0] == pytest.approx(0.1)
+        )
+    finally:
+        driver.disconnect()
+
+
+def test_stop_holds_measured_pose():
+    driver = _driver()
+    arm = driver._arm
+    try:
+        driver.set_command(JointCommand(name=["joint1"], position=[0.4]))
+        assert _wait_for(lambda: arm.q[0] == pytest.approx(0.4))
+
+        driver.stop()
+        assert driver._target["joint1"] == pytest.approx(0.4)
+    finally:
+        driver.disconnect()
+
+
+def test_status_reflects_firmware_fields():
+    driver = _driver()
+    try:
+        state, status = driver.snapshot()
+        assert state.name == list(ARM_JOINTS)
+        assert status.enabled is True
+        assert status.mode == "INIT"
+        assert status.faulted is False
+        assert status.joint_fault == 0
     finally:
         driver.disconnect()

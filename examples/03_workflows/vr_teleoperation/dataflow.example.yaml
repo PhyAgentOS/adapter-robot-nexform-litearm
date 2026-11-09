@@ -1,21 +1,26 @@
-# 模板：VR 遥操（验收清单第 13-14 项）
+# VR 遥操真机链路（验收清单第 13-14 项）
 #
 # 链路：
-#   VR 头显/手柄 -> teleop bridge（IK/映射）-> JointCommand -> 本仓 robot
+#   lite-vr teleop（WS 帧 -> 映射/IK）--TCP :9001--> vr_bridge_dora
+#     -> Dora JointCommand -> robot-litearm
+#
+# lite-vr 的 teleop 按 arm_follow_server 的 TCP/JSON 协议连 :9001，
+# vr_bridge_dora.py 在该端口起服务端并转成标准 Dora action，因此 lite-vr 无需改动。
 #
 # 参数来源：config/vr.example.yaml
 #   （抓取自 lite-vr/litearm-vr-teleop/teleop/config/teleop.yaml，2026-11-05）
-# 已知缺口：t_ee 当前为 0（MDH 已由 URDF 反推，见 docs/mdh.md）。
+# t_ee=[-0.0071,-0.0239,0.140] m（法兰系，2026-11-05 实测）；MDH 已由 URDF 反推。
 #
-# 本文件是结构模板；bridge 节点路径与话题名以现场部署为准。
+# 真机运行前：probe 只读检查、急停在手边、速度已限制。
+# 结束用前台 Ctrl-C，不要 timeout/kill 强杀节点。
 
 nodes:
   - id: vr_bridge
     path: python
-    args: "-u ${LITE_VR_ROOT}/litearm-vr-teleop/teleop/bridge.py --config ../../../config/vr.yaml"
+    args: "-u vr_bridge_dora.py --host 127.0.0.1 --port 9001"
     inputs:
       tick: dora/timer/millis/20
-      robot_state: robot/state
+      state: robot/state
     outputs:
       - action
 

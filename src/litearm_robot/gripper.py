@@ -86,6 +86,10 @@ class LiteGripGripper:
             return None
         state = self._gripper.get_state(wait=False)
         if state.data_age_s is None or state.data_age_s > 1.0:
+            # 夹爪保持姿态时总线静默，缓存会过期；主动要一帧再读。
+            self._gripper.refresh_status()
+            state = self._gripper.get_state(wait=True)
+        if state.data_age_s is None or state.data_age_s > 1.0:
             return None
         return mm_to_m(state.position_mm)
 

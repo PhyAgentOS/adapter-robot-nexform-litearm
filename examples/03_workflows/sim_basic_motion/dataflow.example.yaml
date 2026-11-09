@@ -22,7 +22,7 @@ nodes:
 
   - id: joint_sweep
     path: python
-    args: "-u joint_sweep.py --hold 0.5 --output validation_output/sim_sweep.jsonl"
+    args: "-u joint_sweep.py --hold 0.5 --output validation_output/sim_sweep_dora.jsonl"
     inputs:
       tick: dora/timer/millis/50
       state: mujoco/proprio_state

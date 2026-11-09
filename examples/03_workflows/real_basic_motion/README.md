@@ -1,6 +1,7 @@
 # real_basic_motion
 
-真机基础动作（验收清单第 8、11 项）。**模板，未在真机验证。**
+真机基础动作（验收清单第 8、11 项）。**2026-11-05 已真机跑通**：J7 `+0.05 rad`，
+1.280 s `SUCCESS`，7 轴最终误差 ≤0.0164 rad（见 `docs/validation.md` 第 11 项）。
 
 ## 链路
 
@@ -23,14 +24,31 @@ motion_action_client
 | `controller.yaml` | 参考 operator-controls 同名示例 | 关节组限位与跟随容差 |
 | `../../../config/robot.yaml` | `config/robot.example.yaml` 复制 | `speed <= 0.2`，夹爪按现场启用 |
 
-本仓不预置这两份运动学配置，避免给出未经标定的 URDF 参数。
+本目录现已有真机验证用的 `motion_server.yaml` 与 `controller.yaml`（2026-11-05）。
 
 ## 运行前置（缺一不可）
 
 1. `examples/01_sdk_tests/read_state.py` 通过，`err` 全 0。
 2. `config/robot.yaml` 中 `speed <= 0.2`，`initial_position` 与实际支撑姿态一致。
 3. 现场有人守在硬件急停/断电位置（硬件急停方式见 `docs/hardware.md`）。
-4. 未用上位机「关节方向检测」在真机确认机械方向前，不做仿真与真机同步。
+4. 零位/正方向已有厂商书面定义并做过 FK 对拍（`docs/vendor/litearm-docs/`）。
+
+## 运行
+
+```bash
+# motion_server / joint_trajectory_controller 来自本地 Forge runtime
+mkdir -p /tmp/forge-bin
+ln -sf ~/.PhyAgentOS/forge_runtime/nodes/motion_server/versions/*/motion_server /tmp/forge-bin/
+ln -sf ~/.PhyAgentOS/forge_runtime/nodes/joint_trajectory_controller/versions/*/joint_trajectory_controller /tmp/forge-bin/
+
+cd examples/03_workflows/real_basic_motion
+FORGE_RUNTIME_BIN=/tmp/forge-bin \
+PATH="$PWD/../../../.venv/bin:$HOME/.dora/bin:$PATH" \
+env -u PYTHONPATH dora run dataflow.real.yaml
+```
+
+默认只把 `joint7` 步进 +0.05 rad 后停住，不自动失能。结束用前台 Ctrl-C
+（或 `timeout -s INT`），让节点正常 `disconnect()`；**禁止** `timeout`/`kill` 强杀。
 
 ## 验收记录
 

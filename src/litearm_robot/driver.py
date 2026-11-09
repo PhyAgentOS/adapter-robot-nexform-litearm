@@ -8,12 +8,18 @@
 
 SDK 的 movej_sync 是阻塞式 PTP，因此 set_command 只更新目标，由后台 worker
 合并最新目标后下发；这样 Dora 的 tick/action 循环不会被单个动作阻塞。
+
+控制面方法（enable、disable、reset、home、stop、emergency_stop）由节点循环的
+`control` 扩展输入调用，见 node.py。home 会阻塞十几秒，调用方必须放到工作线程。
 """
 
 from __future__ import annotations
 
 import logging
+import math
 import threading
+from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Any, Protocol
 
 from forge_msgs import JointCommand, JointState
@@ -44,6 +50,35 @@ class ArmLike(Protocol):
     def disable(self) -> None: ...
     def get_state(self, refresh: bool = False) -> Any: ...
     def movej_sync(self, q: list[float], speed: float = 1.0) -> Any: ...
+    def home(self, timeout: float | None = None) -> Any: ...
+    def emergency_stop(self) -> None: ...
+    def reset(self) -> None: ...
+
+
+@dataclass(frozen=True)
+class RobotStatus:
+    """Forge `JointState` 之外的固件状态摘要（用于 `robot_status` 输出）。"""
+
+    enabled: bool
+    mode: str
+    faulted: bool
+    faults: str
+    joint_fault: int
+
+
+def normalize_speed(value: float | None, default: float) -> float:
+    """把可选的 0..1 速度倍率规范化；超出上限夹到 1.0。"""
+    if value is None:
+        return default
+    speed = float(value)
+    if not math.isfinite(speed):
+        raise ValueError(f"speed must be finite, got {value!r}")
+    if speed < 0.0:
+        raise ValueError(f"speed must be >= 0, got {speed}")
+    if speed > 1.0:
+        logger.warning("clamping speed from %.3f to 1.0", speed)
+        return 1.0
+    return speed
 
 
 class _CommandWorker:
@@ -54,16 +89,16 @@ class _CommandWorker:
         self._lock = threading.Lock()
         self._wake = threading.Event()
         self._stop = threading.Event()
-        self._latest: list[float] | None = None
+        self._latest: tuple[list[float], float] | None = None
         self.last_error: Exception | None = None
         self._thread = threading.Thread(
             target=self._run, name="litearm-command", daemon=True
         )
         self._thread.start()
 
-    def submit(self, q: list[float]) -> None:
+    def submit(self, q: list[float], speed: float) -> None:
         with self._lock:
-            self._latest = list(q)
+            self._latest = (list(q), float(speed))
         self._wake.set()
 
     def _run(self) -> None:
@@ -72,13 +107,14 @@ class _CommandWorker:
             if self._stop.is_set():
                 return
             with self._lock:
-                target = self._latest
+                latest = self._latest
                 self._latest = None
                 self._wake.clear()
-            if target is None:
+            if latest is None:
                 continue
+            target, speed = latest
             try:
-                self._send(target)
+                self._send(target, speed)
                 self.last_error = None
             except Exception as error:  # SDK 的超时/被新命令取代都走这里
                 self.last_error = error
@@ -104,6 +140,7 @@ class LitearmDriver(BaseRobotDriver):
             config.gripper
         )
         self._worker: _CommandWorker | None = None
+        self._worker_lock = threading.RLock()
         self._target: dict[str, float] = {}
         self._connected = False
 
@@ -150,7 +187,7 @@ class LitearmDriver(BaseRobotDriver):
             )
 
         self._gripper.connect()
-        self._worker = _CommandWorker(self._send_arm_target)
+        self._ensure_worker()
         self._connected = True
         logger.info(
             "litearm connected: firmware=%s joints=%s",
@@ -168,31 +205,93 @@ class LitearmDriver(BaseRobotDriver):
                     self._full_target(), speed=self.config.speed
                 )
         finally:
-            if self._worker is not None:
-                self._worker.close()
-                self._worker = None
+            self._cancel_worker()
             self._gripper.close()
             self._arm.close()
             self._connected = False
             logger.info("litearm disconnected")
 
     def stop(self) -> None:
-        """停止当前运动；臂保持使能（不下坠），夹爪保持当前力。"""
-        if self._worker is not None:
-            self._worker.close()
-            self._worker = _CommandWorker(self._send_arm_target)
+        """取消排队目标并把当前实测位姿作为新目标；臂保持使能。
+
+        SDK 没有独立的 stop 命令：worker 里正在执行的 movej_sync 无法中断，
+        这里通过取消排队目标 + 以当前位姿重新下发来实现受控停住。
+        """
+        if self._arm is None:
+            self._gripper.stop()
+            return
+        self._cancel_worker()
+        self._target = dict(zip(ARM_JOINTS, self._read_arm_positions()))
+        self._ensure_worker()
+        self._submit_target(self.config.speed)
         self._gripper.stop()
 
     def emergency_stop(self) -> None:
-        """急停：先取消下发，再失能。
+        """急停：取消下发并发送固件 EMERGENCY_STOP（0x12）。
 
-        注意：臂会失去保持力。若姿态无支撑，请先人工托住。
-        固件急停锁存 fault 时，需在 SDK 侧 reset 后才能恢复。
+        固件会立即断力并锁存 EMERGENCY/FAULT；恢复必须先 `reset()` 再 `enable()`。
+        注意：臂失去保持力；若姿态无支撑，请先人工托住。
         """
-        self.stop()
+        self._cancel_worker()
         if self._arm is not None:
-            self._arm.disable()
-        logger.error("emergency stop: arm disabled")
+            self._arm.emergency_stop()
+        self._gripper.stop()
+        logger.error("emergency stop latched; reset() required before enable()")
+
+    def enable(self) -> None:
+        if not self._connected:
+            raise RuntimeError("robot is not connected")
+        self._arm.enable()
+        self._target = dict(zip(ARM_JOINTS, self._read_arm_positions()))
+        self._ensure_worker()
+
+    def disable(self) -> None:
+        if not self._connected:
+            raise RuntimeError("robot is not connected")
+        self._cancel_worker()
+        self._arm.disable()
+
+    def reset(self) -> None:
+        """清除固件故障/急停锁存；不会自动使能。"""
+        if not self._connected:
+            raise RuntimeError("robot is not connected")
+        self._arm.reset()
+        self._target = dict(zip(ARM_JOINTS, self._read_arm_positions()))
+
+    def home(self, timeout: float | None = None) -> None:
+        """固件 `home()`（0x2A）回 URDF 零位，固件内固定 0.10 低速。"""
+        if not self._connected:
+            raise RuntimeError("robot is not connected")
+        timeout = self.config.home_timeout_s if timeout is None else timeout
+        self._cancel_worker()
+        try:
+            self._arm.home(timeout=timeout)
+        finally:
+            self._target = dict(zip(ARM_JOINTS, self._read_arm_positions()))
+            self._ensure_worker()
+
+    # --------------------------------------------------------------- lifecycle
+
+    def _ensure_worker(self) -> None:
+        with self._worker_lock:
+            if self._worker is None:
+                self._worker = _CommandWorker(self._send_arm_target)
+
+    def _cancel_worker(self) -> None:
+        with self._worker_lock:
+            worker, self._worker = self._worker, None
+        if worker is not None:
+            worker.close()
+
+    def _submit_target(self, speed: float) -> None:
+        q = self._full_target()
+        with self._worker_lock:
+            worker = self._worker
+            if worker is None:
+                raise RuntimeError(
+                    "robot is not ready for commands (connect/enable first)"
+                )
+            worker.submit(q, speed)
 
     # ------------------------------------------------------------------ state
 
@@ -207,7 +306,17 @@ class LitearmDriver(BaseRobotDriver):
         return [self._target[name] for name in ARM_JOINTS]
 
     def get_state(self) -> JointState:
+        return self._state_to_joint_state(self._arm.get_state().value)
+
+    def get_status(self) -> RobotStatus:
+        return self._state_to_status(self._arm.get_state().value)
+
+    def snapshot(self) -> tuple[JointState, RobotStatus]:
+        """一次 SDK 读取同时得到 JointState 和固件状态摘要。"""
         state = self._arm.get_state().value
+        return self._state_to_joint_state(state), self._state_to_status(state)
+
+    def _state_to_joint_state(self, state: Any) -> JointState:
         if len(state.joints) != len(ARM_JOINTS):
             raise RuntimeError(
                 f"expected {len(ARM_JOINTS)} joints, got {len(state.joints)}"
@@ -232,9 +341,26 @@ class LitearmDriver(BaseRobotDriver):
             effort=efforts,
         )
 
+    @staticmethod
+    def _state_to_status(state: Any) -> RobotStatus:
+        return RobotStatus(
+            enabled=bool(getattr(state, "enabled", False)),
+            mode=str(getattr(state, "mode_name", "")),
+            faulted=bool(getattr(state, "faulted", False)),
+            faults=str(getattr(state, "fault_detail", "") or ""),
+            joint_fault=int(getattr(state, "joint_fault", 0)),
+        )
+
     # ---------------------------------------------------------------- command
 
-    def set_command(self, command: JointCommand) -> None:
+    def set_command(
+        self, command: JointCommand, *, speed: float | None = None
+    ) -> None:
+        """下发稀疏位置命令。
+
+        `speed` 是本适配器的扩展（0..1 的 SDK 速度倍率），来自 action 载荷的
+        可选 `speed` 列；缺省时使用 `config.speed`。
+        """
         if getattr(command, "mode", "position") != "position":
             raise ValueError("LiteArm adapter only supports mode='position'")
 
@@ -255,15 +381,18 @@ class LitearmDriver(BaseRobotDriver):
                         clipped[name],
                     )
             self._target.update(clipped)
-            if self._worker is None:
-                raise RuntimeError("robot is not connected")
-            self._worker.submit(self._full_target())
+            self._submit_target(normalize_speed(speed, self.config.speed))
 
         if gripper_m is not None:
             self._gripper.set_opening_m(gripper_m)
 
         if self.config.debug:
-            logger.debug("target=%s gripper=%s", self._target, gripper_m)
+            logger.debug(
+                "target=%s gripper=%s speed=%s",
+                self._target,
+                gripper_m,
+                speed,
+            )
 
-    def _send_arm_target(self, q: list[float]) -> None:
-        self._arm.movej_sync(q, speed=self.config.speed)
+    def _send_arm_target(self, q: Sequence[float], speed: float) -> None:
+        self._arm.movej_sync(list(q), speed=speed)

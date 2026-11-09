@@ -51,11 +51,16 @@ scale:
   translation: 1.0
   rotation: 1.0
 
-# t_ee：操作者控制的工具点相对末端 tip link 的偏移（沿工具 +Z，米）。
+# t_ee：操作者控制的工具点相对末端 tip link 的偏移（法兰系 xyz，米）。
+# 语义与 litearm SDK `set_tcp_offset` 一致：p_tool = p_ee + R_ee · xyz。
 # 0 = 直接控制法兰。装夹爪/灵巧手时需按实际 TCP 修改并重新验证。
+# 2026-11-05 实测（LiteGrip，can0）：横向 [-7.1, -23.9] mm 来自 handeye
+# `tool_offset_xy_m`（两指中点对准目标后读法兰 TCP）；轴向 140 mm 为法兰
+# 到两指夹持面中心（指尖 160 mm）。夹爪进给轴 = ee +Z。
+# 来源与方法见 docs/parameters.md §5 与 validation_output/tee_check.json。
 t_ee:
-  tcp_offset_m: [0.0, 0.0, 0.0]
-  note: "litearm SDK 的 set_tcp_offset 是宿主侧换算，固件 get_tcp 恒为法兰"
+  tcp_offset_m: [-0.0071, -0.0239, 0.140]
+  note: "法兰系 ee_link；litearm SDK 的 set_tcp_offset 是宿主侧换算，固件 get_tcp 恒为法兰"
 
 home:
   single_upright_rad: [0.0, -0.5, 0.0, -2.1, -1.57, 0.0, 0.0]

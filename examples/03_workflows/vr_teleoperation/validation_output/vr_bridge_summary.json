@@ -1,0 +1,48 @@
+{
+  "date": "2026-11-05",
+  "case": "VR -> Dora bridge end-to-end simulation",
+  "scope": "Validates vr_bridge_dora.py: lite-vr teleop (mapping/IK) streams joint targets over TCP :9001, the bridge converts them to Forge JointCommand on a Dora action port, mujoco_sim follows, and its proprio_state feeds measured state back to lite-vr. Simulation only; the same bridge/protocol is used by the real-robot dataflow but has not been run against the arm.",
+  "chain": "fake_headset -> WS :8765 -> lite-vr teleop (pybullet IK) -> TCP :9001 -> vr_bridge_dora -> Dora JointCommand -> mujoco_sim -> proprio_state -> vr_bridge_dora -> lite-vr teleop",
+  "source": "lite-vr (external)",
+  "environment": "conda metavr-arm (teleop), repo .venv python3.12 + dora-cli 0.4.1 (bridge/sim), MUJOCO_GL=egl",
+  "preposition": {
+    "command": "{\"cmd\":\"movej\",\"q\":[-0.052,-0.317,-0.864,-1.393,-0.340,-1.260,0.190]}",
+    "note": "Start from the user's measured manipulation pose (handeye_grasp/config/arm.yaml start_pose). At the all-zero pose sigma_min is ~7.6e-5, so a 3 cm hand circle needs large joint motion and IK misses the 3 mm tolerance; this is a pose property, not a bridge effect."
+  },
+  "commands": {
+    "dataflow": "MUJOCO_GL=egl PATH=\"$PWD/../../../.venv/bin:$HOME/.dora/bin:<mujoco_sim-1.1.1 dir>:$PATH\" env -u PYTHONPATH dora run dataflow.sim.yaml",
+    "teleop": "conda run -n metavr-arm python3 launch/run_teleop_webxr.py --source ws --host 127.0.0.1 --port 8765 --real --real-right 127.0.0.1:9001 --viewer gui --probe validation_output/vr_bridge_e2e_probe.jsonl",
+    "headset": "conda run -n metavr-arm python3 litearm-vr-bridge/scripts/fake_headset.py --host 127.0.0.1 --port 8765 --pattern circle --radius 0.03 --period 4 --duration 14"
+  },
+  "evidence": {
+    "bridge_samples": "vr_bridge_sim.jsonl (10 Hz command/measured samples)",
+    "teleop_probe": "vr_bridge_e2e_probe.jsonl (715+ frames; per-frame mapping, IK and TCP pose)"
+  },
+  "results": {
+    "handshake": {
+      "start": "ok (anchor=measured)",
+      "state": "valid, age ~16 ms at 50 Hz",
+      "grip_release": "hold (就地持位), final |cmd-meas| = 0"
+    },
+    "teleop_probe": {
+      "frames": 720,
+      "ik_ok": 720,
+      "ik_clipped": 0,
+      "hand_range_m": [0.06, 0.0, 0.06],
+      "ee_range_m": [0.0598, 0.0605, 0.0003],
+      "ee_vs_target_m": {"p50": 0.00039, "p95": 0.00068, "max": 0.00089},
+      "joint_range_rad": [0.512, 0.296, 0.525, 0.175, 0.363, 0.127, 0.583]
+    },
+    "bridge_tracking": {
+      "following_samples_10hz": 132,
+      "zero_lag_abs_max_rad": {"p50": 0.019, "p95": 0.0314, "max": 0.0338},
+      "delay_compensated_abs_max_rad": {
+        "best_delay_ms": 70,
+        "p50": 0.0052,
+        "p95": 0.0107,
+        "max": 0.0168
+      },
+      "note": "Zero-lag error is dominated by end-to-end latency (teleop pipeline + TCP + 50 Hz Dora tick + position-actuator lag), not by transport loss; best alignment is ~70 ms."
+    }
+  }
+}

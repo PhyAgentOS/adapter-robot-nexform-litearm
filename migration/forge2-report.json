@@ -12,9 +12,53 @@
     ]
   },
   "dora_cli": "1.0.1",
-  "runtime_records": [],
+  "runtime_records": [
+    {
+      "repo": "adapter-robot-nexform-litearm",
+      "entry": "robot-litearm",
+      "mode": "chain",
+      "command": [
+        "${WORKSPACE}/.test-env/bin/dora",
+        "run",
+        "${WORKSPACE}/validation/forge2/runtime-blocked/robot-litearm/chain/dataflow.yaml",
+        "--stop-after",
+        "4s"
+      ],
+      "includes_gateway": true,
+      "exit_code": 1,
+      "passed": false,
+      "status": "blocked / not accepted",
+      "elapsed_seconds": 0.735,
+      "error": null,
+      "scope": "Negative prerequisite diagnostic with unavailable local hardware endpoints, no physical actuation or remote SSH, and no model downloads. Not a successful node-operation or compatibility result.",
+      "log_file": "validation/forge2/runtime-blocked/robot-litearm/chain/dora.log"
+    },
+    {
+      "repo": "adapter-robot-nexform-litearm",
+      "entry": "robot-litearm",
+      "mode": "single",
+      "command": [
+        "${WORKSPACE}/.test-env/bin/dora",
+        "run",
+        "${WORKSPACE}/validation/forge2/runtime-blocked/robot-litearm/single/dataflow.yaml",
+        "--stop-after",
+        "4s"
+      ],
+      "includes_gateway": false,
+      "exit_code": 1,
+      "passed": false,
+      "status": "blocked / not accepted",
+      "elapsed_seconds": 0.63,
+      "error": null,
+      "scope": "Negative prerequisite diagnostic with unavailable local hardware endpoints, no physical actuation or remote SSH, and no model downloads. Not a successful node-operation or compatibility result.",
+      "log_file": "validation/forge2/runtime-blocked/robot-litearm/single/dora.log"
+    }
+  ],
   "runtime_missing": "Vendor SDK and robot hardware are unavailable; robot/bridge Dora and Gateway chain are pending.",
   "acceptance": "Pending final platform artifacts, applicable hardware/model execution and rollback/sustained-run gates.",
   "pillow_dependency": "Node locks currently resolve published Forge Msgs 2.0.0. Security audit remains dependent on Forge PR #3 and a published security-fixed Msgs release; no vulnerability suppression was added.",
-  "gitlab_synchronization": "Not started; follows full acceptance."
+  "gitlab_synchronization": "Not started; follows full acceptance.",
+  "non_dora_entrypoints": {
+    "robot-litearm-bridge": "Standalone HTTP bridge, not a Dora node. Software API contracts are covered by unit tests; native SDK/robot operation remains pending."
+  }
 }

@@ -1,7 +1,6 @@
 {
   "repository": "adapter-robot-nexform-litearm",
   "node_candidate_version": "2.0.0",
-  "baseline_commit": "dd0b6d1db0bd6c9bd781d9bfe7410bfb73e2c16b",
   "changes": [
     "Upgrade Forge Robot/Msgs and both robot/bridge entrypoint dependency environments.",
     "Synchronize English/Chinese root README guidance and frozen dependencies."

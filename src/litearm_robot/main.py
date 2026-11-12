@@ -25,13 +25,17 @@ def _make_driver(config_path: str | None, *, fake: bool = False) -> LitearmDrive
     return LitearmDriver(config)
 
 
-def _run_node(config_path: str | None, *, fake: bool = False) -> int:
+def _run_node(
+    config_path: str | None, *, fake: bool = False, debug: bool = False
+) -> int:
     from .node import run_node
 
     driver = _make_driver(config_path, fake=fake)
+    debug = debug or driver.config.debug
+    logging.getLogger().setLevel(logging.DEBUG if debug else logging.INFO)
     driver.connect()
     try:
-        return run_node(driver, debug=driver.config.debug)
+        return run_node(driver, debug=debug)
     finally:
         driver.disconnect()
 
@@ -85,19 +89,29 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--debug", action="store_true")
     sub = parser.add_subparsers(dest="command")
 
+    # 子命令的同名参数用 SUPPRESS：未显式提供时保留顶层值，避免顶层
+    # `--config A.yaml run` 被解析成 None。
     run = sub.add_parser("run", help="运行 Dora 机器人节点")
-    run.add_argument("--config", default=None)
+    run.add_argument("--config", default=argparse.SUPPRESS)
     run.add_argument("--fake", action="store_true", help="使用 FakeArm")
-    run.add_argument("--debug", action="store_true", help="输出 DEBUG 日志")
+    run.add_argument(
+        "--debug", action="store_true", default=argparse.SUPPRESS, help="输出 DEBUG 日志"
+    )
 
     probe = sub.add_parser("probe", help="只读状态，不运动")
-    probe.add_argument("--config", default=None)
+    probe.add_argument("--config", default=argparse.SUPPRESS)
     probe.add_argument("--fake", action="store_true", help="使用 FakeArm")
+    probe.add_argument(
+        "--debug", action="store_true", default=argparse.SUPPRESS, help="输出 DEBUG 日志"
+    )
 
     home = sub.add_parser("home", help="固件 home() 回零位（低速）")
-    home.add_argument("--config", default=None)
+    home.add_argument("--config", default=argparse.SUPPRESS)
     home.add_argument("--timeout", type=float, default=180.0)
     home.add_argument("--fake", action="store_true", help="使用 FakeArm")
+    home.add_argument(
+        "--debug", action="store_true", default=argparse.SUPPRESS, help="输出 DEBUG 日志"
+    )
 
     args = parser.parse_args(argv)
     logging.basicConfig(
@@ -110,8 +124,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "home":
         return _home(args.config, timeout=args.timeout, fake=args.fake)
     if args.command == "run":
-        return _run_node(args.config, fake=args.fake)
-    return _run_node(args.config, fake=getattr(args, "fake", False))
+        return _run_node(args.config, fake=args.fake, debug=args.debug)
+    return _run_node(
+        args.config, fake=getattr(args, "fake", False), debug=args.debug
+    )
 
 
 if __name__ == "__main__":

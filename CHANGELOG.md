@@ -24,6 +24,12 @@ All notable changes to this project are documented here. The format follows
 - `robot-litearm-bridge`, a line-oriented TCP/JSON bridge over the Dora
   ports, with an example dataflow, client, and protocol documentation.
 
+### Fixed
+
+- `robot-litearm --config A.yaml <subcommand>` no longer silently falls back to
+  the default configuration; all subcommands accept `--debug`, and
+  `run --debug` and `debug: true` now both enable node debug output.
+
 ### Known limitations
 
 - The firmware source for the tested 1.11.0 image is not archived; gripper

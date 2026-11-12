@@ -14,7 +14,8 @@
 
 `robot` 不再使用 `forge_robot.node_runner.run_dora_robot_node`，因为标准 runner
 没有扩展输入入口；`node.py` 复刻了标准语义（`tick` → `state`、`action` →
-`JointCommand`、`master_state`、`STOP`/`ERROR` 收尾），并新增 `control` 输入。
+`JointCommand`、`master_state`、`is_follower` 门控、`STOP`/`ERROR` 收尾），并新增
+`control` 输入。复刻基线与全部有意差异见 `node.py` 模块 docstring。
 `robot_status`、`control_status` 是扩展输出：只有 dataflow 里声明了才会发送，
 未声明时回执写入日志，不会触发 dora 的 "Ignoring output" 警告。
 

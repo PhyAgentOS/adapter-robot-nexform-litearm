@@ -27,7 +27,6 @@ from forge_robot import BaseRobotDriver
 
 from .codec import (
     ARM_JOINTS,
-    GRIPPER,
     JOINT_ORDER,
     clip_arm_positions,
     split_command,
@@ -395,11 +394,16 @@ class LitearmDriver(BaseRobotDriver):
         positions = [float(joint.q) for joint in state.joints]
         velocities = [float(joint.dq) for joint in state.joints]
         efforts = [float(joint.tau) for joint in state.joints]
-        names = list(ARM_JOINTS)
+        names = list(JOINT_ORDER)
 
+        # 恒发满 joint_order：夹爪不可用时发 NaN（未知），而不是缺列让下游
+        # 的 `to_np()` 把缺失关节补成 0（即“全闭”）。
         opening = self._gripper.get_opening_m()
-        if opening is not None:
-            names.append(GRIPPER)
+        if opening is None:
+            positions.append(math.nan)
+            velocities.append(math.nan)
+            efforts.append(math.nan)
+        else:
             positions.append(opening)
             velocities.append(0.0)
             efforts.append(0.0)

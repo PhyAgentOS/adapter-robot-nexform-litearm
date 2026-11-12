@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import math
 import threading
 import time
 
@@ -54,12 +55,16 @@ def _wait_for(predicate, timeout: float = 2.0) -> bool:
 
 
 def test_joint_order_and_state():
+    from forge_robot.arrow_validation import validate_robot_state_arrow
+
     driver = _driver()
     try:
         assert driver.joint_order == list(ARM_JOINTS) + ["gripper"]
         state = driver.get_state()
-        assert state.name == list(ARM_JOINTS)
-        assert state.position == pytest.approx([0.0] * 7)
+        assert state.name == driver.joint_order
+        assert state.position[:7] == pytest.approx([0.0] * 7)
+        assert math.isnan(state.position[7])
+        validate_robot_state_arrow(state.to_arrow(), driver.joint_order)
     finally:
         driver.disconnect()
 
@@ -409,7 +414,8 @@ def test_status_reflects_firmware_fields():
     driver = _driver()
     try:
         state, status = driver.snapshot()
-        assert state.name == list(ARM_JOINTS)
+        assert state.name == driver.joint_order
+        assert math.isnan(state.position[-1])
         assert status.enabled is True
         assert status.mode == "INIT"
         assert status.faulted is False

@@ -4,16 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "robot-litearm"
-version = "0.1.0"
+version = "2.0.0"
 description = "Forge/Dora robot adapter for the NexForm LiteArm 7-DOF arm and LiteGrip gripper."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "Apache-2.0" }
 dependencies = [
-  # Forge stable/1.x line, matching Core 1.1.x and Dora 0.4.1.
-  "dora-rs==0.4.1",
-  "forge-msgs>=1.0,<2",
-  "forge-robot>=1.0,<2",
+  # Forge 2.x / Dora 1.x dependency baseline.
+  "dora-rs>=1.0.1,<2",
+  "forge-msgs>=2.1.0,<3",
+  "forge-robot>=2.0.0,<3",
   "PyYAML>=6.0",
 ]
 

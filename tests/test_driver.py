@@ -20,11 +20,14 @@ pytestmark = pytest.mark.skipif(
 )
 
 if HAVE_FORGE:
+    from types import SimpleNamespace
+
     from forge_msgs import JointCommand
 
+    from litearm_robot.config import GripperConfig
     from litearm_robot.driver import LitearmDriver
     from litearm_robot.fake import FakeArm
-    from litearm_robot.gripper import NullGripper
+    from litearm_robot.gripper import LiteGripGripper, NullGripper
 
 
 def _driver(**overrides) -> LitearmDriver:
@@ -229,6 +232,73 @@ def test_command_speed_override():
         assert _wait_for(lambda: arm.last_speed == pytest.approx(0.5))
     finally:
         driver.disconnect()
+
+
+class _RecordingGripper:
+    def __init__(self):
+        self.openings = []
+
+    def connect(self):
+        pass
+
+    def close(self):
+        pass
+
+    def get_opening_m(self):
+        return None
+
+    def set_opening_m(self, opening_m):
+        self.openings.append(opening_m)
+
+    def stop(self):
+        pass
+
+
+def test_gripper_command_clipped_to_configured_max():
+    gripper = _RecordingGripper()
+    driver = LitearmDriver(
+        RobotConfig(
+            move_to_initial=False,
+            gripper=GripperConfig(enabled=True, max_opening_m=0.05),
+        ),
+        arm=FakeArm(),
+        gripper=gripper,
+    )
+    driver.connect()
+    try:
+        driver.set_command(
+            JointCommand(name=["gripper"], position=[0.07])
+        )
+        assert gripper.openings == pytest.approx([0.05])
+    finally:
+        driver.disconnect()
+
+
+class _FakeLiteGrip:
+    def __init__(self, position_mm=20.0):
+        self.position_mm = position_mm
+        self.calls = []
+
+    def get_state(self, wait=False):
+        return SimpleNamespace(
+            position_mm=self.position_mm, data_age_s=0.0
+        )
+
+    def goto(self, position_mm, *, duration):
+        self.calls.append((position_mm, duration))
+
+
+def test_litegrip_goto_duration_uses_configured_speed():
+    gripper = LiteGripGripper(GripperConfig(speed_mm_s=20.0))
+    fake = _FakeLiteGrip(position_mm=20.0)
+    gripper._gripper = fake
+
+    gripper.set_opening_m(0.06)
+
+    assert len(fake.calls) == 1
+    position_mm, duration = fake.calls[0]
+    assert position_mm == pytest.approx(60.0)
+    assert duration == pytest.approx(2.0)
 
 
 def test_command_uses_config_speed_by_default():

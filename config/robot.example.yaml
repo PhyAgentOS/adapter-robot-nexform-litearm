@@ -48,7 +48,9 @@ gripper:
   can_id: 0x08
   # 显式给主站 ID，不用自动探测（0x7FF 会被臂板桥屏蔽）。
   mst_id: 0x18
+  # 两指总开口上限，范围 (0, 0.080] m；命令按此值裁剪。
   max_opening_m: 0.080
+  # 夹爪运动速度，用于换算 SDK goto() 的 duration。
   speed_mm_s: 20.0
 
 debug: false

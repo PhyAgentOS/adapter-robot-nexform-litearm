@@ -41,7 +41,8 @@ nodes:
 ```
 
 完整示例见 [`examples/04_forge_bridge/`](../examples/04_forge_bridge/)。
-安装本包后也可直接使用入口 `robot-litearm-bridge`。
+安装本包后也可直接使用入口 `robot-litearm-bridge`。夹爪开口上限通过
+`--max-opening-m` 配置，应与 robot 节点的 `gripper.max_opening_m` 相同。
 
 ## 协议
 
@@ -72,7 +73,9 @@ nodes:
   `--settle-timeout`（默认 20 s，可由 `timeout_s` 覆盖）返回
   `ok:false`、`settled:false`。命令之后才到达的状态才算数，旧状态不会掩盖
   仍在进行的运动。
-- `gripper` 的 `opening_m` 是两指总开口，范围 0..0.080 m，超出即夹到边界。
+- `gripper` 的 `opening_m` 是两指总开口，范围 0..`max_opening_m`，超出即
+  夹到边界。桥的 `--max-opening-m`（默认 0.080 m）应与 robot 配置的
+  `gripper.max_opening_m` 保持一致，否则桥侧裁剪与驱动侧裁剪会不同。
 - `movej`/`gripper` 的 `ok` 只保证 action 已被 Dora 取走；机器人节点仍可能
   因配置或驱动状态拒绝（例如夹爪未启用），目前没有 action 级回执。
 

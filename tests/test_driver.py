@@ -175,7 +175,7 @@ def test_mixed_command_applies_both_when_gripper_ready():
         driver.disconnect()
 
 
-@pytest.mark.parametrize("bad", [float("nan"), float("inf")])
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf")])
 def test_command_rejects_non_finite_arm_position(bad):
     driver = _driver()
     arm = driver._arm
@@ -187,6 +187,26 @@ def test_command_rejects_non_finite_arm_position(bad):
         time.sleep(0.1)
         assert arm.q[0] == pytest.approx(0.0)
         assert driver._target["joint1"] == pytest.approx(0.0)
+    finally:
+        driver.disconnect()
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf")])
+def test_command_rejects_non_finite_gripper(bad):
+    """inf/-inf 不能被裁剪成最大开口后当作合法下发给夹爪。"""
+    gripper = _RecordingGripper()
+    driver = LitearmDriver(
+        RobotConfig(enable_on_connect=True, move_to_initial=False),
+        arm=FakeArm(),
+        gripper=gripper,
+    )
+    driver.connect()
+    try:
+        with pytest.raises(ValueError):
+            driver.set_command(
+                JointCommand(name=["gripper"], position=[bad])
+            )
+        assert gripper.openings == []
     finally:
         driver.disconnect()
 
@@ -209,6 +229,29 @@ def test_failed_movej_is_reported_in_status():
         assert "movej timed out" in status.command_error
         # 上报一次后清空，后续 tick 不会重复。
         assert driver.snapshot()[1].command_error == ""
+        assert driver.take_error() is None
+    finally:
+        driver.disconnect()
+
+
+def test_snapshot_can_leave_error_for_robot_status_consumer():
+    class FailingArm(FakeArm):
+        def movej_sync(self, q, speed: float = 1.0):
+            raise RuntimeError("movej timed out")
+
+    driver = LitearmDriver(
+        RobotConfig(enable_on_connect=True, move_to_initial=False),
+        arm=FailingArm(),
+        gripper=NullGripper(),
+    )
+    driver.connect()
+    try:
+        driver.set_command(JointCommand(name=["joint1"], position=[0.2]))
+        assert _wait_for(lambda: driver._worker.last_error is not None)
+        # 未声明 robot_status 的 tick 不消费错误。
+        assert driver.snapshot(consume_error=False)[1].command_error == ""
+        # 真正消费 robot_status 的一次 tick 仍能看到并清空。
+        assert "movej timed out" in driver.snapshot()[1].command_error
         assert driver.take_error() is None
     finally:
         driver.disconnect()

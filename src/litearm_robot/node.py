@@ -217,7 +217,9 @@ def _handle_tick(
     debug: bool,
     on_tick_after_state=None,
 ) -> None:
-    state, status = driver.snapshot()
+    # 只有真正发布 robot_status 时才消费 command_error，否则留给后续声明了
+    # robot_status 的 tick，避免错误在无人订阅时被悄悄吞掉。
+    state, status = driver.snapshot(consume_error="robot_status" in outputs)
     node.send_output("state", state.to_arrow())
     if "robot_status" in outputs:
         node.send_output("robot_status", _status_to_arrow(status))

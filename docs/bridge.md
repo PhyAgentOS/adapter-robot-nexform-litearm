@@ -81,7 +81,10 @@ nodes:
   夹到边界。桥的 `--max-opening-m`（默认 0.080 m）应与 robot 配置的
   `gripper.max_opening_m` 保持一致，否则桥侧裁剪与驱动侧裁剪会不同。
 - `movej`/`gripper` 的 `ok` 只保证 action 已被 Dora 取走；机器人节点仍可能
-  因配置或驱动状态拒绝（例如夹爪未启用），目前没有 action 级回执。
+  因配置或驱动状态拒绝（例如夹爪未启用）。被拒绝的 action 会以
+  `control_status`（`command:"action"` 或 `"master_state"`、`status:"rejected"`）
+  上报，但它不带桥的 `request_id`，桥无法把它关联到具体的 `movej` 等待；
+  调用方需要读取 `command_error` 或 `state` 判断结果。
 
 ### 控制面
 

@@ -394,17 +394,22 @@ class LitearmDriver(BaseRobotDriver):
     def get_status(self) -> RobotStatus:
         return self._state_to_status(self._arm.get_state().value)
 
-    def snapshot(self) -> tuple[JointState, RobotStatus]:
+    def snapshot(
+        self, *, consume_error: bool = True
+    ) -> tuple[JointState, RobotStatus]:
         """一次 SDK 读取同时得到 JointState 和固件状态摘要。
 
         后台 movej 的执行失败会并入 `command_error` 上报一次（读取后清除），
         这样 dataflow 和 bridge 客户端不会只看到“命令已被接受”。
+        `consume_error=False` 时不读取错误，留给真正消费 `robot_status` 的
+        调用方，避免无人订阅时把错误悄悄吞掉。
         """
         state = self._arm.get_state().value
         status = self._state_to_status(state)
-        error = self.take_error()
-        if error:
-            status = replace(status, command_error=error)
+        if consume_error:
+            error = self.take_error()
+            if error:
+                status = replace(status, command_error=error)
         return self._state_to_joint_state(state), status
 
     def take_error(self) -> str | None:
@@ -473,15 +478,7 @@ class LitearmDriver(BaseRobotDriver):
         if not arm_updates and gripper_m is None:
             return
 
-        # 前置校验：任何一项不合法都在动臂/夹爪之前整体拒绝。
-        if gripper_m is not None and not math.isfinite(gripper_m):
-            raise ValueError(f"gripper opening must be finite, got {gripper_m!r}")
-        for name, requested in arm_updates.items():
-            if not math.isfinite(requested):
-                raise ValueError(
-                    f"{name} position must be finite, got {requested!r}"
-                )
-
+        # 有限性由 codec.split_command 在裁剪之前校验；这里只剩裁剪。
         clipped = clip_arm_positions(arm_updates) if arm_updates else {}
         for name, requested in arm_updates.items():
             if clipped[name] != requested:

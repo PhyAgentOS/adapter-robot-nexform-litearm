@@ -79,6 +79,8 @@ def split_command(
     """把稀疏 JointCommand 拆成 (arm 目标, 夹爪开口 m)。
 
     只接受本构型声明的名字；未知关节直接报错，避免静默丢命令。
+    非有限值在裁剪**之前**拒绝：否则 `inf` 会被裁成限位/最大开口，
+    看起来是有限值，从而绕过调用方的校验。
     """
     if len(names) != len(positions):
         raise ValueError("JointCommand name/position length mismatch")
@@ -86,10 +88,13 @@ def split_command(
     arm: dict[str, float] = {}
     gripper_m: float | None = None
     for name, value in zip(names, positions, strict=True):
+        number = float(value)
+        if not math.isfinite(number):
+            raise ValueError(f"{name} position must be finite, got {value!r}")
         if name == GRIPPER:
-            gripper_m = clip_gripper_opening(value, gripper_max_m)
+            gripper_m = clip_gripper_opening(number, gripper_max_m)
         elif name in JOINT_LIMITS:
-            arm[name] = float(value)
+            arm[name] = number
         else:
             raise KeyError(f"unknown joint: {name}")
     return arm, gripper_m

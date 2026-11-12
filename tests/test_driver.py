@@ -133,6 +133,79 @@ def test_firmware_prefix_mismatch_raises():
         driver.connect()
 
 
+def test_connect_firmware_failure_closes_arm():
+    arm = FakeArm().connect()
+    arm.firmware = "Other-FW"
+    driver = LitearmDriver(
+        RobotConfig(firmware_prefix="Litearm"),
+        arm=arm,
+        gripper=NullGripper(),
+    )
+
+    with pytest.raises(RuntimeError):
+        driver.connect()
+
+    assert arm.connected is False
+    assert driver._connected is False
+
+
+class _MovejBoomArm(FakeArm):
+    def movej_sync(self, q, speed=1.0):
+        raise RuntimeError("movej failed mid-init")
+
+
+def test_connect_initial_motion_failure_closes_arm():
+    arm = _MovejBoomArm().connect()
+    driver = LitearmDriver(
+        RobotConfig(
+            move_to_initial=True, initial_position={"joint1": 0.1}
+        ),
+        arm=arm,
+        gripper=NullGripper(),
+    )
+
+    with pytest.raises(RuntimeError):
+        driver.connect()
+
+    assert arm.connected is False
+
+
+class _BrokenGripper:
+    def __init__(self):
+        self.closed = False
+
+    def connect(self):
+        raise RuntimeError("gripper bus unavailable")
+
+    def close(self):
+        self.closed = True
+
+    def get_opening_m(self):
+        return None
+
+    def set_opening_m(self, opening_m):
+        raise RuntimeError("not connected")
+
+    def stop(self):
+        pass
+
+
+def test_connect_gripper_failure_closes_arm():
+    arm = FakeArm().connect()
+    gripper = _BrokenGripper()
+    driver = LitearmDriver(
+        RobotConfig(move_to_initial=False),
+        arm=arm,
+        gripper=gripper,
+    )
+
+    with pytest.raises(RuntimeError):
+        driver.connect()
+
+    assert gripper.closed is True
+    assert arm.connected is False
+
+
 def test_emergency_stop_disables_arm():
     driver = _driver()
     arm = driver._arm

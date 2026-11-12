@@ -37,6 +37,12 @@ All notable changes to this project are documented here. The format follows
   the default configuration; all subcommands accept `--debug`, and
   `run --debug` and `debug: true` now both enable node debug output.
 
+### Fixed
+
+- A failure partway through `connect()` (firmware check, `enable()`, initial
+  move, or gripper connect) now closes the already-opened arm/gripper sessions
+  instead of leaving `_connected=False` and leaking the SDK connection.
+
 ### Known limitations
 
 - The firmware source for the tested 1.11.0 image is not archived; gripper

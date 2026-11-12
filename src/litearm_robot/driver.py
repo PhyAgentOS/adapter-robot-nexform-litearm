@@ -136,6 +136,7 @@ class LitearmDriver(BaseRobotDriver):
     ):
         self.config = config
         self._arm = arm
+        self._owns_arm = arm is None
         self._gripper = gripper if gripper is not None else make_gripper(
             config.gripper
         )
@@ -155,45 +156,69 @@ class LitearmDriver(BaseRobotDriver):
             logger.warning("robot already connected")
             return
 
-        if self._arm is None:
-            try:
-                import litearm as pa
-            except ImportError as error:
+        try:
+            if self._arm is None:
+                try:
+                    import litearm as pa
+                except ImportError as error:
+                    raise RuntimeError(
+                        "litearm SDK missing; install it from the internal "
+                        "litearm-python repository"
+                    ) from error
+                self._arm = pa.Arm(port=self.config.port).connect()
+
+            firmware = str(getattr(self._arm, "firmware", ""))
+            if self.config.firmware_prefix and not firmware.startswith(
+                self.config.firmware_prefix
+            ):
                 raise RuntimeError(
-                    "litearm SDK missing; install it from the internal "
-                    "litearm-python repository"
-                ) from error
-            self._arm = pa.Arm(port=self.config.port).connect()
+                    f"unexpected firmware {firmware!r}; expected prefix "
+                    f"{self.config.firmware_prefix!r}"
+                )
 
-        firmware = str(getattr(self._arm, "firmware", ""))
-        if self.config.firmware_prefix and not firmware.startswith(
-            self.config.firmware_prefix
-        ):
-            raise RuntimeError(
-                f"unexpected firmware {firmware!r}; expected prefix "
-                f"{self.config.firmware_prefix!r}"
-            )
+            if self.config.enable_on_connect:
+                self._arm.enable()
 
-        if self.config.enable_on_connect:
-            self._arm.enable()
+            self._target = dict(zip(ARM_JOINTS, self._read_arm_positions()))
+            if self.config.move_to_initial and self.config.initial_position:
+                self._target.update(
+                    clip_arm_positions(self.config.initial_position)
+                )
+                self._arm.movej_sync(
+                    self._full_target(), speed=self.config.speed
+                )
 
-        self._target = dict(zip(ARM_JOINTS, self._read_arm_positions()))
-        if self.config.move_to_initial and self.config.initial_position:
-            self._target.update(
-                clip_arm_positions(self.config.initial_position)
-            )
-            self._arm.movej_sync(
-                self._full_target(), speed=self.config.speed
-            )
+            self._gripper.connect()
+            self._ensure_worker()
+        except BaseException:
+            # connect 失败时必须关闭已经打开的 SDK 会话；否则 disconnect()
+            # 因 _connected=False 直接返回，串口会话会泄漏。
+            self._cleanup_failed_connect()
+            raise
 
-        self._gripper.connect()
-        self._ensure_worker()
         self._connected = True
         logger.info(
             "litearm connected: firmware=%s joints=%s",
             firmware or "unknown",
             self._arm.n,
         )
+
+    def _cleanup_failed_connect(self) -> None:
+        self._cancel_worker()
+        try:
+            self._gripper.close()
+        except Exception:
+            logger.exception("failed to close gripper after connect error")
+        if self._arm is not None:
+            try:
+                self._arm.close()
+            except Exception:
+                logger.exception("failed to close arm after connect error")
+            finally:
+                if self._owns_arm:
+                    self._arm = None
+        self._target = {}
+        self._connected = False
 
     def disconnect(self) -> None:
         if not self._connected:

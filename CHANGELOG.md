@@ -61,6 +61,17 @@ All notable changes to this project are documented here. The format follows
   duration instead of a hard-coded 0.3 s. Invalid values are rejected by
   `load_config()`.
 
+### Fixed
+
+- Commands that carry both arm joints and the gripper are now all-or-nothing:
+  every parameter is validated before any state changes, and the gripper is
+  driven before the arm, so a disabled or disconnected gripper raises without
+  the arm moving. Non-finite positions are rejected outright.
+- Background `movej_sync` failures are no longer silent: they surface once via
+  `robot_status.command_error` (also visible to `robot-litearm-bridge` clients
+  as `command_error`), and rejected `action` / `master_state` inputs produce a
+  `control_status` receipt instead of only a log line.
+
 ### Known limitations
 
 - The firmware source for the tested 1.11.0 image is not archived; gripper

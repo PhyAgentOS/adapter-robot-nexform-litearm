@@ -19,7 +19,7 @@ import logging
 import math
 import threading
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Protocol
 
 from forge_msgs import JointCommand, JointState
@@ -64,6 +64,8 @@ class RobotStatus:
     faulted: bool
     faults: str
     joint_fault: int
+    #: 后台 movej 最近一次执行失败；读取后清空，为空表示没有未上报的失败。
+    command_error: str = ""
 
 
 def normalize_speed(value: float | None, default: float) -> float:
@@ -115,10 +117,21 @@ class _CommandWorker:
             target, speed = latest
             try:
                 self._send(target, speed)
-                self.last_error = None
             except Exception as error:  # SDK 的超时/被新命令取代都走这里
-                self.last_error = error
+                with self._lock:
+                    self.last_error = error
                 logger.warning("movej_sync failed: %s", error)
+            else:
+                with self._lock:
+                    self.last_error = None
+
+    def take_error(self) -> str | None:
+        """读取并清除最近一次执行失败，供状态输出上报。"""
+        with self._lock:
+            error, self.last_error = self.last_error, None
+        if error is None:
+            return None
+        return str(error) or type(error).__name__
 
     def close(self) -> None:
         """请求退出并等待在途的 `movej_sync` 返回。
@@ -382,9 +395,23 @@ class LitearmDriver(BaseRobotDriver):
         return self._state_to_status(self._arm.get_state().value)
 
     def snapshot(self) -> tuple[JointState, RobotStatus]:
-        """一次 SDK 读取同时得到 JointState 和固件状态摘要。"""
+        """一次 SDK 读取同时得到 JointState 和固件状态摘要。
+
+        后台 movej 的执行失败会并入 `command_error` 上报一次（读取后清除），
+        这样 dataflow 和 bridge 客户端不会只看到“命令已被接受”。
+        """
         state = self._arm.get_state().value
-        return self._state_to_joint_state(state), self._state_to_status(state)
+        status = self._state_to_status(state)
+        error = self.take_error()
+        if error:
+            status = replace(status, command_error=error)
+        return self._state_to_joint_state(state), status
+
+    def take_error(self) -> str | None:
+        """读取并清除后台 movej 最近一次执行失败。"""
+        with self._worker_lock:
+            worker = self._worker
+        return None if worker is None else worker.take_error()
 
     def _state_to_joint_state(self, state: Any) -> JointState:
         if len(state.joints) != len(ARM_JOINTS):
@@ -430,6 +457,10 @@ class LitearmDriver(BaseRobotDriver):
 
         `speed` 是本适配器的扩展（0..1 的 SDK 速度倍率），来自 action 载荷的
         可选 `speed` 列；缺省时使用 `config.speed`。
+
+        一条命令里同时带臂和夹爪时按“要么整体接受、要么整体拒绝”处理：所有
+        校验在修改任何状态之前完成，夹爪先于臂下发。夹爪后端不可用（例如
+        `gripper.enabled: false`）会直接抛出，臂目标保持不变。
         """
         if getattr(command, "mode", "position") != "position":
             raise ValueError("LiteArm adapter only supports mode='position'")
@@ -442,21 +473,41 @@ class LitearmDriver(BaseRobotDriver):
         if not arm_updates and gripper_m is None:
             return
 
-        if arm_updates:
-            clipped = clip_arm_positions(arm_updates)
-            for name, requested in arm_updates.items():
-                if clipped[name] != requested:
-                    logger.warning(
-                        "clipping %s from %.4f to %.4f rad",
-                        name,
-                        requested,
-                        clipped[name],
-                    )
-            self._target.update(clipped)
-            self._submit_target(normalize_speed(speed, self.config.speed))
+        # 前置校验：任何一项不合法都在动臂/夹爪之前整体拒绝。
+        if gripper_m is not None and not math.isfinite(gripper_m):
+            raise ValueError(f"gripper opening must be finite, got {gripper_m!r}")
+        for name, requested in arm_updates.items():
+            if not math.isfinite(requested):
+                raise ValueError(
+                    f"{name} position must be finite, got {requested!r}"
+                )
 
+        clipped = clip_arm_positions(arm_updates) if arm_updates else {}
+        for name, requested in arm_updates.items():
+            if clipped[name] != requested:
+                logger.warning(
+                    "clipping %s from %.4f to %.4f rad",
+                    name,
+                    requested,
+                    clipped[name],
+                )
+
+        if arm_updates:
+            speed_value = normalize_speed(speed, self.config.speed)
+            if self._worker is None:
+                raise RuntimeError(
+                    "robot is not ready for commands (connect/enable first)"
+                )
+        else:
+            speed_value = None
+
+        # 夹爪先执行：失败时臂尚未收到任何目标，不会出现“命令失败但臂动了”。
         if gripper_m is not None:
             self._gripper.set_opening_m(gripper_m)
+
+        if arm_updates:
+            self._target.update(clipped)
+            self._submit_target(speed_value)
 
         if self.config.debug:
             logger.debug(

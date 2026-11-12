@@ -102,6 +102,7 @@ def _status_to_arrow(status: RobotStatus) -> pa.RecordBatch:
             "faulted": pa.array([status.faulted], type=pa.bool_()),
             "faults": pa.array([status.faults], type=pa.string()),
             "joint_fault": pa.array([status.joint_fault], type=pa.int64()),
+            "command_error": pa.array([status.command_error], type=pa.string()),
         }
     )
 

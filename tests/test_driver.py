@@ -127,6 +127,93 @@ def test_gripper_command_without_gripper_raises():
         driver.disconnect()
 
 
+def test_mixed_command_without_gripper_moves_nothing():
+    """夹爪失败时臂必须保持原位，不能出现“命令失败但机器人动了”。"""
+    driver = _driver()
+    arm = driver._arm
+    try:
+        with pytest.raises(RuntimeError):
+            driver.set_command(
+                JointCommand(
+                    name=["joint1", "gripper"], position=[0.4, 0.02]
+                )
+            )
+        time.sleep(0.2)
+        assert arm.q[0] == pytest.approx(0.0)
+        assert driver._target["joint1"] == pytest.approx(0.0)
+    finally:
+        driver.disconnect()
+
+
+def test_mixed_command_applies_both_when_gripper_ready():
+    class RecordingGripper(NullGripper):
+        def __init__(self) -> None:
+            self.opening: float | None = None
+
+        def get_opening_m(self) -> float | None:
+            return self.opening
+
+        def set_opening_m(self, opening_m: float) -> None:
+            self.opening = opening_m
+
+    gripper = RecordingGripper()
+    driver = LitearmDriver(
+        RobotConfig(enable_on_connect=True, move_to_initial=False),
+        arm=FakeArm(),
+        gripper=gripper,
+    )
+    driver.connect()
+    try:
+        driver.set_command(
+            JointCommand(name=["joint1", "gripper"], position=[0.4, 0.02])
+        )
+        assert gripper.opening == pytest.approx(0.02)
+        assert _wait_for(
+            lambda: driver.get_state().position[0] == pytest.approx(0.4)
+        )
+    finally:
+        driver.disconnect()
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf")])
+def test_command_rejects_non_finite_arm_position(bad):
+    driver = _driver()
+    arm = driver._arm
+    try:
+        with pytest.raises(ValueError):
+            driver.set_command(
+                JointCommand(name=["joint1"], position=[bad])
+            )
+        time.sleep(0.1)
+        assert arm.q[0] == pytest.approx(0.0)
+        assert driver._target["joint1"] == pytest.approx(0.0)
+    finally:
+        driver.disconnect()
+
+
+def test_failed_movej_is_reported_in_status():
+    class FailingArm(FakeArm):
+        def movej_sync(self, q, speed: float = 1.0):
+            raise RuntimeError("movej timed out")
+
+    driver = LitearmDriver(
+        RobotConfig(enable_on_connect=True, move_to_initial=False),
+        arm=FailingArm(),
+        gripper=NullGripper(),
+    )
+    driver.connect()
+    try:
+        driver.set_command(JointCommand(name=["joint1"], position=[0.2]))
+        assert _wait_for(lambda: driver._worker.last_error is not None)
+        _state, status = driver.snapshot()
+        assert "movej timed out" in status.command_error
+        # 上报一次后清空，后续 tick 不会重复。
+        assert driver.snapshot()[1].command_error == ""
+        assert driver.take_error() is None
+    finally:
+        driver.disconnect()
+
+
 def test_firmware_prefix_mismatch_raises():
     driver = LitearmDriver(
         RobotConfig(firmware_prefix="Other"),

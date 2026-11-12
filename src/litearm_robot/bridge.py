@@ -137,6 +137,7 @@ def _parse_status(batch: pa.RecordBatch) -> dict[str, Any]:
         "faulted": bool(py("faulted", False)),
         "faults": str(py("faults", "")),
         "joint_fault": int(py("joint_fault", 0)),
+        "command_error": str(py("command_error", "")),
     }
 
 

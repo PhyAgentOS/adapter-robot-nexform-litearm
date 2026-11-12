@@ -53,11 +53,15 @@ nodes:
 
 | 请求 | 响应字段 |
 |---|---|
-| `{"cmd":"state"}` 或 `{"cmd":"status"}` | `ok`、`valid`、`q`（7 轴 rad）、`gripper_m`、`age_s`，以及缓存的 `enabled`、`mode`、`faulted`、`faults`、`joint_fault` |
+| `{"cmd":"state"}` 或 `{"cmd":"status"}` | `ok`、`valid`、`q`（7 轴 rad）、`gripper_m`、`age_s`，以及缓存的 `enabled`、`mode`、`faulted`、`faults`、`joint_fault`、`command_error` |
 | `{"cmd":"ping"}` | `ok`、`pong` |
 
 `valid` 表示最近一帧 `state` 的年龄不超过 `--state-timeout`（默认 0.5 s）。
 状态过期时仍返回最后一次的 `q`，但 `valid:false`；从未收到状态时 `q` 为 `null`。
+
+`command_error` 非空表示后台 `movej_sync` 最近一次执行失败（例如超时）；
+该失败由下一个 `robot_status` 上报一次后清空。收到 `command_error` 时应视为
+目标可能未到达，按 `state` 的实际位置重新规划，而不是假定命令成功。
 
 ### 运动
 

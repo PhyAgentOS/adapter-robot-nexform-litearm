@@ -24,6 +24,12 @@ All notable changes to this project are documented here. The format follows
 - `robot-litearm-bridge`, a line-oriented TCP/JSON bridge over the Dora
   ports, with an example dataflow, client, and protocol documentation.
 
+### Fixed
+
+- A failure partway through `connect()` (firmware check, `enable()`, initial
+  move, or gripper connect) now closes the already-opened arm/gripper sessions
+  instead of leaving `_connected=False` and leaking the SDK connection.
+
 ### Known limitations
 
 - The firmware source for the tested 1.11.0 image is not archived; gripper

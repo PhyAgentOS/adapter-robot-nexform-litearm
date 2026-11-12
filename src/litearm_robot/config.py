@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-from .codec import ARM_JOINTS, JOINT_ORDER
+from .codec import ARM_JOINTS, GRIPPER_MAX_M, JOINT_ORDER
 
 
 @dataclass(frozen=True)
@@ -55,6 +56,19 @@ class RobotConfig:
         if self.home_timeout_s <= 0.0:
             raise ValueError(
                 f"home_timeout_s must be > 0, got {self.home_timeout_s}"
+            )
+        gripper = self.gripper
+        if not math.isfinite(gripper.max_opening_m) or not (
+            0.0 < gripper.max_opening_m <= GRIPPER_MAX_M
+        ):
+            raise ValueError(
+                "gripper.max_opening_m must be in "
+                f"(0, {GRIPPER_MAX_M}], got {gripper.max_opening_m}"
+            )
+        if not math.isfinite(gripper.speed_mm_s) or gripper.speed_mm_s <= 0.0:
+            raise ValueError(
+                "gripper.speed_mm_s must be > 0, "
+                f"got {gripper.speed_mm_s}"
             )
 
 

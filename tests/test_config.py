@@ -46,6 +46,23 @@ def test_rejects_non_positive_home_timeout(tmp_path):
         load_config(path)
 
 
+@pytest.mark.parametrize(
+    "gripper_yaml",
+    [
+        "max_opening_m: 0\n",
+        "max_opening_m: 0.2\n",
+        "max_opening_m: .nan\n",
+        "speed_mm_s: 0\n",
+        "speed_mm_s: -1\n",
+    ],
+)
+def test_rejects_invalid_gripper_limits(tmp_path, gripper_yaml):
+    path = tmp_path / "gripper.yaml"
+    path.write_text("gripper:\n  " + gripper_yaml, encoding="utf-8")
+    with pytest.raises(ValueError):
+        load_config(path)
+
+
 def test_rejects_unknown_initial_joint(tmp_path):
     path = tmp_path / "pose.yaml"
     path.write_text(

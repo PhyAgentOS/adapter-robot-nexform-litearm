@@ -89,6 +89,8 @@ class BridgeOptions:
     home_timeout: float = 180.0
     dispatch_timeout: float = 2.0
     poll_period: float = 0.02
+    #: 与 robot 配置的 gripper.max_opening_m 保持一致。
+    max_opening_m: float = GRIPPER_MAX_M
 
 
 @dataclass
@@ -401,7 +403,7 @@ def _dispatch_gripper(
     if raw is None:
         raise ValueError("缺少 opening_m")
     opening = _finite_number(raw, "opening_m")
-    clipped = clip_gripper_opening(opening)
+    clipped = clip_gripper_opening(opening, options.max_opening_m)
     command = JointCommand(
         name=[GRIPPER], mode="position", position=[clipped]
     )
@@ -415,7 +417,7 @@ def _dispatch_gripper(
         "cmd": "gripper",
         "opening_m": clipped,
         "clipped": abs(clipped - opening) > 1e-12,
-        "max_opening_m": GRIPPER_MAX_M,
+        "max_opening_m": options.max_opening_m,
     }
 
 
@@ -698,8 +700,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--settle-timeout", type=float, default=20.0)
     parser.add_argument("--control-timeout", type=float, default=10.0)
     parser.add_argument("--home-timeout", type=float, default=180.0)
+    parser.add_argument(
+        "--max-opening-m",
+        type=float,
+        default=GRIPPER_MAX_M,
+        help="夹爪最大开口（m），应与 robot 配置一致",
+    )
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args(argv)
+    if not 0.0 < args.max_opening_m <= GRIPPER_MAX_M:
+        parser.error(
+            f"--max-opening-m must be in (0, {GRIPPER_MAX_M}], "
+            f"got {args.max_opening_m}"
+        )
 
     logging.basicConfig(
         level=logging.DEBUG if args.debug else logging.INFO,
@@ -719,6 +732,7 @@ def main(argv: list[str] | None = None) -> int:
         settle_timeout=args.settle_timeout,
         control_timeout=args.control_timeout,
         home_timeout=args.home_timeout,
+        max_opening_m=args.max_opening_m,
     )
     try:
         return run_bridge(options, debug=args.debug)

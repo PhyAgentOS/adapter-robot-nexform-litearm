@@ -6,10 +6,12 @@ from litearm_robot.codec import (
     ARM_JOINTS,
     GRIPPER,
     GRIPPER_MAX_M,
+    GRIPPER_MIN_MOVE_S,
     JOINT_LIMITS,
     JOINT_ORDER,
     clip_arm_positions,
     clip_gripper_opening,
+    gripper_move_duration_s,
     m_to_mm,
     mm_to_m,
     split_command,
@@ -48,6 +50,18 @@ def test_clip_gripper_opening():
     assert clip_gripper_opening(0.02) == pytest.approx(0.02)
 
 
+def test_clip_gripper_opening_respects_configured_max():
+    assert clip_gripper_opening(0.07, 0.05) == pytest.approx(0.05)
+    assert clip_gripper_opening(0.04, 0.05) == pytest.approx(0.04)
+
+
+def test_gripper_move_duration_uses_speed():
+    assert gripper_move_duration_s(0.02, 20.0) == pytest.approx(1.0)
+    assert gripper_move_duration_s(0.0, 20.0) == GRIPPER_MIN_MOVE_S
+    with pytest.raises(ValueError):
+        gripper_move_duration_s(0.01, 0.0)
+
+
 def test_split_command_separates_arm_and_gripper():
     arm, gripper_m = split_command(
         ["joint3", "gripper", "joint1"], [0.1, 0.04, -0.2]
@@ -59,6 +73,13 @@ def test_split_command_separates_arm_and_gripper():
 def test_split_command_clips_gripper():
     _, gripper_m = split_command(["gripper"], [1.0])
     assert gripper_m == GRIPPER_MAX_M
+
+
+def test_split_command_respects_configured_max():
+    _, gripper_m = split_command(
+        ["gripper"], [0.07], gripper_max_m=0.05
+    )
+    assert gripper_m == pytest.approx(0.05)
 
 
 def test_split_command_length_mismatch():

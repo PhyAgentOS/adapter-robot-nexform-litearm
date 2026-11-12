@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping, Sequence
 
 ARM_JOINTS: tuple[str, ...] = tuple(f"joint{i}" for i in range(1, 8))
@@ -29,6 +30,9 @@ JOINT_LIMITS: Mapping[str, tuple[float, float]] = {
 
 # LiteGrip 两指总开口：闭合 0 m，全开 0.080 m（SDK 侧 0..80 mm）。
 GRIPPER_MAX_M = 0.080
+
+#: `goto(duration=...)` 的下限，避免零行程或极高速度产生 0 秒目标。
+GRIPPER_MIN_MOVE_S = 0.05
 
 
 def mm_to_m(value_mm: float) -> float:
@@ -52,13 +56,25 @@ def clip_arm_positions(
     return clipped
 
 
-def clip_gripper_opening(value_m: float) -> float:
-    return min(max(float(value_m), 0.0), GRIPPER_MAX_M)
+def clip_gripper_opening(
+    value_m: float, max_m: float = GRIPPER_MAX_M
+) -> float:
+    return min(max(float(value_m), 0.0), float(max_m))
+
+
+def gripper_move_duration_s(travel_m: float, speed_mm_s: float) -> float:
+    """按行程和配置速度计算 LiteGrip `goto()` 的 duration 秒数。"""
+    if not math.isfinite(speed_mm_s) or speed_mm_s <= 0.0:
+        raise ValueError(f"gripper speed_mm_s must be > 0, got {speed_mm_s}")
+    speed_m_s = float(speed_mm_s) / 1000.0
+    return max(abs(float(travel_m)) / speed_m_s, GRIPPER_MIN_MOVE_S)
 
 
 def split_command(
     names: Sequence[str],
     positions: Sequence[float],
+    *,
+    gripper_max_m: float = GRIPPER_MAX_M,
 ) -> tuple[dict[str, float], float | None]:
     """把稀疏 JointCommand 拆成 (arm 目标, 夹爪开口 m)。
 
@@ -71,7 +87,7 @@ def split_command(
     gripper_m: float | None = None
     for name, value in zip(names, positions, strict=True):
         if name == GRIPPER:
-            gripper_m = clip_gripper_opening(value)
+            gripper_m = clip_gripper_opening(value, gripper_max_m)
         elif name in JOINT_LIMITS:
             arm[name] = float(value)
         else:

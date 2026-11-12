@@ -320,6 +320,24 @@ def test_gripper_clips_and_dispatches():
     assert box["resp"]["opening_m"] == pytest.approx(GRIPPER_MAX_M)
 
 
+def test_gripper_clips_to_option_max():
+    options = BridgeOptions(dispatch_timeout=1.0, max_opening_m=0.05)
+    bridge = Bridge(options)
+    node = FakeNode()
+    thread, box = _start(
+        bridge, {"cmd": "gripper", "opening_m": 0.07}, options
+    )
+    assert _pump_until(bridge, node, lambda: bool(node.of("action")))
+    thread.join(timeout=2.0)
+
+    command = JointCommand.from_arrow(node.of("action")[0])
+    assert list(command.position) == pytest.approx([0.05])
+    assert box["resp"]["ok"] is True
+    assert box["resp"]["clipped"] is True
+    assert box["resp"]["opening_m"] == pytest.approx(0.05)
+    assert box["resp"]["max_opening_m"] == pytest.approx(0.05)
+
+
 def test_gripper_requires_opening():
     response = handle_request(Bridge(), {"cmd": "gripper"})
     assert response["ok"] is False

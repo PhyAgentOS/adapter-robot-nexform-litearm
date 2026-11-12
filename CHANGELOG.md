@@ -24,6 +24,13 @@ All notable changes to this project are documented here. The format follows
 - `robot-litearm-bridge`, a line-oriented TCP/JSON bridge over the Dora
   ports, with an example dataflow, client, and protocol documentation.
 
+### Fixed
+
+- `gripper.max_opening_m` now clips commands in both the driver and the
+  bridge, and `gripper.speed_mm_s` now determines the LiteGrip `goto()`
+  duration instead of a hard-coded 0.3 s. Invalid values are rejected by
+  `load_config()`.
+
 ### Known limitations
 
 - The firmware source for the tested 1.11.0 image is not archived; gripper

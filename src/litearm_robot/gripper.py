@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 from typing import Protocol
 
-from .codec import m_to_mm, mm_to_m
+from .codec import gripper_move_duration_s, m_to_mm, mm_to_m
 from .config import GripperConfig
 
 logger = logging.getLogger(__name__)
@@ -96,9 +96,14 @@ class LiteGripGripper:
     def set_opening_m(self, opening_m: float) -> None:
         if self._gripper is None:
             raise RuntimeError("gripper is not connected")
+        current = self.get_opening_m()
+        start_m = 0.0 if current is None else current
+        duration = gripper_move_duration_s(
+            opening_m - start_m, self.config.speed_mm_s
+        )
         self._gripper.goto(
             m_to_mm(opening_m),
-            duration=0.3,
+            duration=duration,
         )
 
     def stop(self) -> None:

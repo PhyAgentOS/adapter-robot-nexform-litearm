@@ -365,7 +365,9 @@ class LitearmDriver(BaseRobotDriver):
             raise ValueError("LiteArm adapter only supports mode='position'")
 
         arm_updates, gripper_m = split_command(
-            list(command.name), list(command.position)
+            list(command.name),
+            list(command.position),
+            gripper_max_m=self.config.gripper.max_opening_m,
         )
         if not arm_updates and gripper_m is None:
             return

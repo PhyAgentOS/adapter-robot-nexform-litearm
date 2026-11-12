@@ -23,6 +23,13 @@ All notable changes to this project are documented here. The format follows
   column on `action` that overrides `config.speed`.
 - `robot-litearm-bridge`, a line-oriented TCP/JSON bridge over the Dora
   ports, with an example dataflow, client, and protocol documentation.
+- `node.py` now documents that it is a fork of
+  `forge_robot.node_runner.run_dora_robot_node` (baseline forge_robot 1.0.1)
+  and lists every intentional divergence. The fork gained the standard runner's
+  `is_follower` gate, empty `joint_order` guard, configurable Arrow validation,
+  external subscriptions / `on_external_event`, and `on_tick_after_state`
+  hook. Rejected `action` / `master_state` inputs emit a `control_status`
+  receipt.
 
 ### Known limitations
 

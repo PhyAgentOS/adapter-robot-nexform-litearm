@@ -24,6 +24,17 @@ All notable changes to this project are documented here. The format follows
 - `robot-litearm-bridge`, a line-oriented TCP/JSON bridge over the Dora
   ports, with an example dataflow, client, and protocol documentation.
 
+### Fixed
+
+- The command worker no longer overlaps SDK calls. `stop()` now folds the hold
+  pose into the existing coalescing queue instead of tearing down and recreating
+  the worker, so an in-flight `movej_sync` finishes before the hold command runs.
+  `home()` and `disconnect()` wait for the in-flight call to return before
+  calling the SDK directly or closing the arm; `disconnect()` only returns once
+  the command thread has exited. `emergency_stop()` and `disable()` still send
+  their firmware command immediately and reap the abandoned thread before the
+  next `enable()`.
+
 ### Known limitations
 
 - The firmware source for the tested 1.11.0 image is not archived; gripper

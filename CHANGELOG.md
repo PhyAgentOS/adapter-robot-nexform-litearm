@@ -61,6 +61,14 @@ All notable changes to this project are documented here. The format follows
   duration instead of a hard-coded 0.3 s. Invalid values are rejected by
   `load_config()`.
 
+### Fixed
+
+- `state` now always carries every joint in `joint_order`. When the gripper is
+  disabled or unreadable, its position/velocity/effort are `NaN` instead of the
+  column disappearing and downstream `to_np()` filling it with `0.0` (closed).
+  The bridge maps that `NaN` to `null`, and `probe` / `home` output non-finite
+  values as `null` so the JSON stays RFC 8259 compliant.
+
 ### Known limitations
 
 - The firmware source for the tested 1.11.0 image is not archived; gripper

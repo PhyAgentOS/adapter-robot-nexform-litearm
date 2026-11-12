@@ -203,13 +203,17 @@ class Bridge:
                 str(name): float(value)
                 for name, value in zip(state.name, state.position, strict=True)
             }
+            # 夹爪不可用时驱动发 NaN；桥用 null 表示未知，避免非标准 JSON。
+            gripper_m = positions.get(GRIPPER)
+            if gripper_m is not None and not math.isfinite(gripper_m):
+                gripper_m = None
             missing = [name for name in ARM_JOINTS if name not in positions]
             if missing:
                 payload.update(
                     {
                         "valid": False,
                         "q": None,
-                        "gripper_m": positions.get(GRIPPER),
+                        "gripper_m": gripper_m,
                         "age_s": age,
                         "error": f"state 缺少关节 {missing}",
                     }
@@ -218,7 +222,7 @@ class Bridge:
                 payload.update(
                     {
                         "q": [positions[name] for name in ARM_JOINTS],
-                        "gripper_m": positions.get(GRIPPER),
+                        "gripper_m": gripper_m,
                         "age_s": age,
                     }
                 )

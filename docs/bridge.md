@@ -59,6 +59,9 @@ nodes:
 `valid` 表示最近一帧 `state` 的年龄不超过 `--state-timeout`（默认 0.5 s）。
 状态过期时仍返回最后一次的 `q`，但 `valid:false`；从未收到状态时 `q` 为 `null`。
 
+`state` 始终包含 `joint_order` 里的全部关节。夹爪未启用或读不到时，`gripper_m`
+为 `null`（节点侧用 `NaN` 占位，桥在输出前转成 `null`）；`q` 不受影响。
+
 ### 运动
 
 | 请求 | 响应 |

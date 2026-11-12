@@ -149,6 +149,9 @@ PATH="$PWD/../../.venv/bin:$HOME/.dora/bin:$PATH" dora run dataflow.bridge.yaml
 `disable`、`reset`、`estop`、`ping`；详情与线程模型见
 [`docs/bridge.md`](docs/bridge.md)。桥默认只监听 `127.0.0.1:9005`，无鉴权。
 
+驱动发布的 `state` 恒含 `joint_order` 的全部 8 项；夹爪未启用或读回超时时，
+`gripper` 的位置/速度/力矩为 `NaN`（未知），桥的 JSON 输出把该值转为 `null`。
+
 ## 8. 仿真 workflow
 
 见 [`examples/03_workflows/sim_basic_motion/`](examples/03_workflows/sim_basic_motion/)。

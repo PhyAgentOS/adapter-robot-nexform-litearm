@@ -121,9 +121,23 @@ class _CommandWorker:
                 logger.warning("movej_sync failed: %s", error)
 
     def close(self) -> None:
+        """请求退出并等待在途的 `movej_sync` 返回。
+
+        SDK 的单段 PTP 不可中断，只能等它自然返回；返回后线程在循环顶端
+        看到 `_stop` 并退出。调用方据此确认没有 SDK 调用在并发执行。
+        """
         self._stop.set()
         self._wake.set()
-        self._thread.join(timeout=2.0)
+        self._thread.join()
+
+    def abandon(self) -> None:
+        """请求退出但不等待，用于急停/失能等必须立刻下发固件命令的路径。
+
+        线程本身是 daemon；在途的 `movej_sync` 返回后自行退出，但此时不再
+        允许创建新 worker，直到调用方重新 enable/connect。
+        """
+        self._stop.set()
+        self._wake.set()
 
 
 class LitearmDriver(BaseRobotDriver):
@@ -141,6 +155,8 @@ class LitearmDriver(BaseRobotDriver):
             config.gripper
         )
         self._worker: _CommandWorker | None = None
+        #: 已放弃但可能在途的旧 worker，等 `_ensure_worker`/`_cancel_worker` 回收。
+        self._retired: list[_CommandWorker] = []
         self._worker_lock = threading.RLock()
         self._target: dict[str, float] = {}
         self._connected = False
@@ -224,13 +240,15 @@ class LitearmDriver(BaseRobotDriver):
         if not self._connected:
             return
         try:
+            # 先等在途 movej_sync 返回，再直接调用 SDK / 关闭串口；
+            # 否则 arm.close() 之后仍可能有运动线程在写。
+            self._cancel_worker()
             if self.config.move_to_reset_on_disconnect and self.config.reset_position:
                 self._target.update(clip_arm_positions(self.config.reset_position))
                 self._arm.movej_sync(
                     self._full_target(), speed=self.config.speed
                 )
         finally:
-            self._cancel_worker()
             self._gripper.close()
             self._arm.close()
             self._connected = False
@@ -239,16 +257,18 @@ class LitearmDriver(BaseRobotDriver):
     def stop(self) -> None:
         """取消排队目标并把当前实测位姿作为新目标；臂保持使能。
 
-        SDK 没有独立的 stop 命令：worker 里正在执行的 movej_sync 无法中断，
-        这里通过取消排队目标 + 以当前位姿重新下发来实现受控停住。
+        SDK 没有独立的 stop 命令：worker 里正在执行的 movej_sync 无法中断。
+        这里不销毁 worker，而是把实测位姿投进同一个合并队列；在途调用返回后
+        由同一线程执行，保证任何时刻只有一个 movej_sync 在跑。
         """
         if self._arm is None:
             self._gripper.stop()
             return
-        self._cancel_worker()
         self._target = dict(zip(ARM_JOINTS, self._read_arm_positions()))
-        self._ensure_worker()
-        self._submit_target(self.config.speed)
+        with self._worker_lock:
+            worker = self._worker
+        if worker is not None:
+            worker.submit(self._full_target(), self.config.speed)
         self._gripper.stop()
 
     def emergency_stop(self) -> None:
@@ -256,8 +276,11 @@ class LitearmDriver(BaseRobotDriver):
 
         固件会立即断力并锁存 EMERGENCY/FAULT；恢复必须先 `reset()` 再 `enable()`。
         注意：臂失去保持力；若姿态无支撑，请先人工托住。
+
+        这里不等待在途 movej_sync：急停命令优先。旧线程在调用返回后自行退出，
+        并在下一次 `enable()` 前被回收。
         """
-        self._cancel_worker()
+        self._cancel_worker(wait=False)
         if self._arm is not None:
             self._arm.emergency_stop()
         self._gripper.stop()
@@ -273,7 +296,7 @@ class LitearmDriver(BaseRobotDriver):
     def disable(self) -> None:
         if not self._connected:
             raise RuntimeError("robot is not connected")
-        self._cancel_worker()
+        self._cancel_worker(wait=False)
         self._arm.disable()
 
     def reset(self) -> None:
@@ -298,15 +321,37 @@ class LitearmDriver(BaseRobotDriver):
     # --------------------------------------------------------------- lifecycle
 
     def _ensure_worker(self) -> None:
+        # 先回收被放弃的旧线程（例如急停/失能时留在在途调用里的那个），
+        # 再创建新 worker，避免两个线程同时调用 SDK。
+        with self._worker_lock:
+            retired, self._retired = self._retired, []
+        for worker in retired:
+            worker.close()
         with self._worker_lock:
             if self._worker is None:
                 self._worker = _CommandWorker(self._send_arm_target)
 
-    def _cancel_worker(self) -> None:
+    def _cancel_worker(self, *, wait: bool = True) -> None:
+        """停掉当前 worker。
+
+        `wait=True` 等待在途 movej_sync 返回（stop/home/disconnect 路径）；
+        `wait=False` 只发退出信号并登记到 `_retired`，供急停/失能立即下发
+        固件命令，后续 `_ensure_worker` 或 `_cancel_worker` 再回收。
+        """
         with self._worker_lock:
-            worker, self._worker = self._worker, None
-        if worker is not None:
-            worker.close()
+            workers = self._retired
+            self._retired = []
+            if self._worker is not None:
+                workers.append(self._worker)
+                self._worker = None
+        for worker in workers:
+            if wait:
+                worker.close()
+            else:
+                worker.abandon()
+        if not wait:
+            with self._worker_lock:
+                self._retired.extend(workers)
 
     def _submit_target(self, speed: float) -> None:
         q = self._full_target()

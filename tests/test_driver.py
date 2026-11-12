@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import threading
 import time
 
 import pytest
@@ -344,4 +345,145 @@ def test_status_reflects_firmware_fields():
         assert status.faulted is False
         assert status.joint_fault == 0
     finally:
+        driver.disconnect()
+
+
+# ------------------------------------------------------- worker lifecycle
+
+
+class _BlockingArm(FakeArm):
+    """movej_sync 阻塞到 `release`，用于模拟真机上的长 PTP。"""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.lock = threading.Lock()
+        self.in_flight = 0
+        self.max_in_flight = 0
+        self.entered = threading.Event()
+        self.release = threading.Event()
+        self.close_called = False
+
+    def close(self) -> None:
+        self.close_called = True
+        super().close()
+
+    def movej_sync(self, q, speed: float = 1.0):
+        with self.lock:
+            self.in_flight += 1
+            self.max_in_flight = max(self.max_in_flight, self.in_flight)
+        self.entered.set()
+        try:
+            self.release.wait(timeout=5.0)
+            return super().movej_sync(q, speed)
+        finally:
+            with self.lock:
+                self.in_flight -= 1
+
+
+def _blocking_driver():
+    arm = _BlockingArm()
+    driver = LitearmDriver(
+        RobotConfig(enable_on_connect=True, move_to_initial=False),
+        arm=arm,
+        gripper=NullGripper(),
+    )
+    driver.connect()
+    return driver, arm
+
+
+def _run_in_thread(target):
+    box: dict = {}
+    thread = threading.Thread(
+        target=lambda: box.update(result=target()), daemon=True
+    )
+    thread.start()
+    return thread, box
+
+
+def test_stop_never_overlaps_movej():
+    driver, arm = _blocking_driver()
+    try:
+        driver.set_command(JointCommand(name=["joint1"], position=[0.3]))
+        assert arm.entered.wait(timeout=2.0)
+
+        started = time.monotonic()
+        driver.stop()
+        assert time.monotonic() - started < 1.0  # stop 不等待长 PTP
+
+        # 在途调用仍未返回时，不应出现第二个 movej_sync。
+        assert arm.max_in_flight == 1
+        arm.release.set()
+        assert _wait_for(lambda: arm.move_count >= 2)
+        assert arm.max_in_flight == 1
+        assert driver._target["joint1"] == pytest.approx(0.0)
+    finally:
+        arm.release.set()
+        driver.disconnect()
+
+
+def test_disconnect_waits_for_in_flight_movej():
+    driver, arm = _blocking_driver()
+    try:
+        driver.set_command(JointCommand(name=["joint1"], position=[0.3]))
+        assert arm.entered.wait(timeout=2.0)
+
+        thread, _box = _run_in_thread(driver.disconnect)
+        time.sleep(0.2)
+        assert thread.is_alive()  # 仍在等在途 movej 返回
+        assert arm.close_called is False
+
+        arm.release.set()
+        thread.join(timeout=2.0)
+        assert not thread.is_alive()
+        assert arm.close_called is True
+        assert arm.in_flight == 0
+        assert arm.max_in_flight == 1
+    finally:
+        arm.release.set()
+        driver.disconnect()
+
+
+def test_emergency_stop_does_not_wait_for_movej():
+    driver, arm = _blocking_driver()
+    try:
+        driver.set_command(JointCommand(name=["joint1"], position=[0.3]))
+        assert arm.entered.wait(timeout=2.0)
+
+        started = time.monotonic()
+        driver.emergency_stop()
+        assert time.monotonic() - started < 1.0
+        assert arm.mode_name == "EMERGENCY"
+        assert arm.in_flight == 1  # 旧调用仍在跑，但急停已下发
+
+        # 放弃的线程在 disconnect 时被回收；返回后不再有 SDK 调用。
+        thread, _box = _run_in_thread(driver.disconnect)
+        time.sleep(0.2)
+        assert thread.is_alive()
+        arm.release.set()
+        thread.join(timeout=2.0)
+        assert not thread.is_alive()
+        assert arm.close_called is True
+        assert arm.in_flight == 0
+    finally:
+        arm.release.set()
+        driver.disconnect()
+
+
+def test_home_waits_for_in_flight_movej():
+    driver, arm = _blocking_driver()
+    try:
+        driver.set_command(JointCommand(name=["joint1"], position=[0.3]))
+        assert arm.entered.wait(timeout=2.0)
+
+        thread, _box = _run_in_thread(lambda: driver.home(timeout=5.0))
+        time.sleep(0.2)
+        assert arm.home_count == 0  # 旧 movej 未返回前不进固件 home
+
+        arm.release.set()
+        thread.join(timeout=2.0)
+        assert not thread.is_alive()
+        assert arm.home_count == 1
+        assert arm.max_in_flight == 1
+    finally:
+        arm.release.set()
         driver.disconnect()

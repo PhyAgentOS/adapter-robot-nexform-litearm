@@ -40,13 +40,19 @@ The example configuration enables motion on connect:
   **immediately after connecting** and can move the arm without any Dora
   action. Disable this or choose a supported, collision-free initial pose
   before the first hardware run.
-- `move_to_reset_on_disconnect` defaults to `false`. `disconnect()` closes the
-  SDK connection; it does not park the arm.
-- `stop()` cancels pending targets but keeps the arm enabled, so holding torque
-  remains.
-- `emergency_stop()` cancels pending targets and calls `arm.disable()`; the arm
-  **loses holding torque**. Support the arm before calling it from an
-  unsupported pose.
+- `move_to_reset_on_disconnect` defaults to `false`. `disconnect()` waits for
+  any in-flight `movej_sync` to return, then closes the SDK connection; it does
+  not park the arm. It returns only after the command thread has exited.
+- `stop()` replaces pending targets with the last measured pose but keeps the
+  arm enabled, so holding torque remains. An in-flight `movej_sync` cannot be
+  interrupted: it runs to completion, and only then does the hold command run.
+  Commands are issued by a single worker thread, so two `movej_sync` calls
+  never overlap.
+- `emergency_stop()` cancels pending targets and calls `arm.disable()`; it does
+  **not** wait for an in-flight `movej_sync`, so the firmware stop command is
+  sent immediately. The abandoned call returns on its own and is reaped before
+  the next `enable()`. The arm **loses holding torque**. Support the arm before
+  calling it from an unsupported pose.
 - Disabling the gripper drops its force; a grasped object will fall.
 
 ## Recorded actions and playback

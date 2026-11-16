@@ -35,18 +35,11 @@ Bundled robot assets come from NexForm repositories that are also Apache-2.0.
 
 ## Dependency audit
 
-`pip-audit` reports 39 advisories against `pillow 12.3.0`, all fixed in
-`pillow 13.0.0`. `forge-msgs` 1.3.0 (required by the Forge stable/1.x line)
-constrains `pillow>=10,<13`, so the patched version cannot be selected without
-breaking the supported Forge line.
-
-Mitigation and tracking:
-
-- This adapter does not decode, receive, or forward images; forge-msgs image
-  helpers are not used on untrusted input.
-- CI allows only Pillow advisories and fails on every other advisory.
-- Remove this exception once a `forge-msgs` release for stable/1.x accepts
-  `pillow>=13`.
+The Forge 2.x migration now requires `forge-msgs>=2.1.0,<3` and locks
+`Pillow 13.0.0`. This removes the earlier `<13` resolver restriction. The
+package-wide Pillow vulnerability exemption has been removed: CI audits all
+locked runtime dependencies and fails on any reported vulnerability or audit
+execution failure. This change does not update the separate `stable/1.x` line.
 
 ## License findings
 

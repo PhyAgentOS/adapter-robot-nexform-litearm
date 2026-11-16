@@ -68,6 +68,17 @@ All notable changes to this project are documented here. The format follows
   column disappearing and downstream `to_np()` filling it with `0.0` (closed).
   The bridge maps that `NaN` to `null`, and `probe` / `home` output non-finite
   values as `null` so the JSON stays RFC 8259 compliant.
+- Commands that carry both arm joints and the gripper are now all-or-nothing:
+  every parameter is validated before any state changes, and the gripper is
+  driven before the arm, so a disabled or disconnected gripper raises without
+  the arm moving. Non-finite positions are rejected in `split_command` before
+  clipping, so `inf`/`-inf` can no longer become a finite limit or maximum
+  opening.
+- Background `movej_sync` failures are no longer silent: they surface once via
+  `robot_status.command_error` (also visible to `robot-litearm-bridge` clients
+  as `command_error`), and rejected `action` / `master_state` inputs produce a
+  `control_status` receipt instead of only a log line. The error is only
+  consumed when the node actually publishes `robot_status`.
 
 ### Known limitations
 

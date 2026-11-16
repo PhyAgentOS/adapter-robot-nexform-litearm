@@ -39,13 +39,15 @@ class FakeDriver:
         )
         self.commands: list[JointCommand] = []
         self.error = error
+        self.consume_error_calls: list[bool] = []
 
     def set_command(self, command, **_kwargs) -> None:
         if self.error is not None:
             raise self.error
         self.commands.append(command)
 
-    def snapshot(self):
+    def snapshot(self, *, consume_error=True):
+        self.consume_error_calls.append(consume_error)
         state = JointState(
             name=list(ARM_JOINTS),
             position=[0.0] * len(ARM_JOINTS),
@@ -205,6 +207,16 @@ def test_tick_calls_on_tick_after_state():
     assert node.of("state")
     assert node.of("robot_status")
     assert calls == [(node, driver)]
+    assert driver.consume_error_calls == [True]
+
+
+def test_tick_without_robot_status_does_not_consume_command_error():
+    node = FakeNode()
+    driver = FakeDriver()
+    _handle_tick(node, driver, set(), driver.joint_order, False)
+    assert node.of("state")
+    assert node.of("robot_status") == []
+    assert driver.consume_error_calls == [False]
 
 
 def test_status_arrow_fields():
@@ -223,4 +235,6 @@ def test_status_arrow_fields():
         "faulted",
         "faults",
         "joint_fault",
+        "command_error",
     ]
+    assert batch["command_error"][0].as_py() == ""

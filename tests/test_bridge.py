@@ -126,6 +126,7 @@ def test_robot_status_cached():
                 "faulted": pa.array([False], type=pa.bool_()),
                 "faults": pa.array([""], type=pa.string()),
                 "joint_fault": pa.array([0], type=pa.int64()),
+                "command_error": pa.array(["movej timed out"], type=pa.string()),
             }
         )
     )
@@ -133,6 +134,7 @@ def test_robot_status_cached():
     assert response["enabled"] is True
     assert response["mode"] == "POSITION"
     assert response["joint_fault"] == 0
+    assert response["command_error"] == "movej timed out"
 
 
 # ------------------------------------------------------------------ 协议层

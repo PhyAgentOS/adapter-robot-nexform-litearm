@@ -163,6 +163,16 @@ Forge 标准校验默认允许额外列（`strict_extra_columns=False`），只�
 `timeout_s`，单行）。节点回执 `control_status`（列 `command`、`request_id`、
 `status`、`message`），`status` 取值 `accepted` / `done` / `rejected` / `error`。
 
+`control_status` 也用于上报被拒绝的 `action` / `master_state`：这些回执的
+`command` 为输入端口名、`status` 为 `rejected`、`request_id` 为空（没有可回显
+的 ID）。它们与 `control` 命令共用同一队列，因此只保证可观测，不提供逐条
+请求关联。
+
+节点声明 `robot_status` 输出时，每次 `tick` 还发布固件状态（列 `enabled`、
+`mode`、`faulted`、`faults`、`joint_fault`、`command_error`）。`command_error`
+非空表示后台 `movej_sync` 最近一次执行失败（如超时），上报一次后清空；
+收到后应视为目标可能未到达，按 `state` 的实际位置重新规划。
+
 | 命令 | SDK 调用 | 执行方式 | 说明 |
 |---|---|---|---|
 | `enable` | `enable()` | 队列 | 恢复使能并重建运动 worker |

@@ -90,3 +90,12 @@ def test_split_command_length_mismatch():
 def test_split_command_unknown_name_raises():
     with pytest.raises(KeyError):
         split_command(["wrist"], [0.0])
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf")])
+def test_split_command_rejects_non_finite_before_clipping(bad):
+    """非有限值必须在裁剪前拒绝，否则 inf 会被夹成限位/最大开口。"""
+    with pytest.raises(ValueError):
+        split_command(["joint1"], [bad])
+    with pytest.raises(ValueError):
+        split_command(["gripper"], [bad])

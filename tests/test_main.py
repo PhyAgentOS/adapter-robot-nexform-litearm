@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from types import SimpleNamespace
 
@@ -50,6 +51,38 @@ def test_all_subcommands_accept_debug(monkeypatch):
     assert probe["debug"] is False  # probe/home 不使用节点 debug 参数
     assert home["debug"] is False
     assert run["debug"] is True
+
+
+def test_probe_emits_strict_json_with_null_for_nan(monkeypatch, capsys):
+    class FakeDriver:
+        def connect(self):
+            pass
+
+        def disconnect(self):
+            pass
+
+        def get_state(self):
+            return SimpleNamespace(
+                name=["joint1", "gripper"],
+                position=[0.0, float("nan")],
+                velocity=[0.0, float("inf")],
+                effort=[0.0, float("-inf")],
+            )
+
+    monkeypatch.setattr(cli, "_make_driver", lambda path, fake=False: FakeDriver())
+    assert cli._probe("robot.yaml", fake=True) == 0
+
+    out = capsys.readouterr().out
+    assert "NaN" not in out
+    assert "Infinity" not in out
+
+    def reject_constant(token):
+        raise ValueError(f"non-standard JSON token: {token}")
+
+    payload = json.loads(out, parse_constant=reject_constant)
+    assert payload["position"] == [0.0, None]
+    assert payload["velocity"] == [0.0, None]
+    assert payload["effort"] == [0.0, None]
 
 
 def test_run_honours_config_debug(monkeypatch, tmp_path):

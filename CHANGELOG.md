@@ -63,6 +63,11 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `state` now always carries every joint in `joint_order`. When the gripper is
+  disabled or unreadable, its position/velocity/effort are `NaN` instead of the
+  column disappearing and downstream `to_np()` filling it with `0.0` (closed).
+  The bridge maps that `NaN` to `null`, and `probe` / `home` output non-finite
+  values as `null` so the JSON stays RFC 8259 compliant.
 - Commands that carry both arm joints and the gripper are now all-or-nothing:
   every parameter is validated before any state changes, and the gripper is
   driven before the arm, so a disabled or disconnected gripper raises without

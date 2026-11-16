@@ -104,6 +104,23 @@ def test_state_with_data():
     assert response["age_s"] >= 0.0
 
 
+def test_state_nan_gripper_becomes_null():
+    bridge = Bridge()
+    names = list(ARM_JOINTS) + [GRIPPER]
+    bridge.set_state(
+        JointState(
+            name=names,
+            position=_q() + [float("nan")],
+            velocity=[0.0] * len(names),
+            effort=[0.0] * len(names),
+        )
+    )
+    response = handle_line(bridge, '{"cmd":"state"}')
+    assert response["ok"] is True
+    assert response["gripper_m"] is None
+    assert "NaN" not in json.dumps(response)
+
+
 def test_state_stale_is_flagged():
     bridge = Bridge(BridgeOptions(state_timeout=0.01))
     _set_state(bridge, _q())

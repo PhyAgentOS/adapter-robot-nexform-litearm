@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import math
 import sys
 
 from .config import load_config
@@ -40,6 +41,14 @@ def _run_node(
         driver.disconnect()
 
 
+def _json_safe(values) -> list[float | None]:
+    """把非有限值转成 null，保持输出是标准 JSON（夹爪禁用时为 NaN）。"""
+    return [
+        None if not math.isfinite(float(value)) else float(value)
+        for value in values
+    ]
+
+
 def _probe(config_path: str | None, *, fake: bool = False) -> int:
     driver = _make_driver(config_path, fake=fake)
     driver.connect()
@@ -49,9 +58,9 @@ def _probe(config_path: str | None, *, fake: bool = False) -> int:
             json.dumps(
                 {
                     "name": state.name,
-                    "position": state.position,
-                    "velocity": state.velocity,
-                    "effort": state.effort,
+                    "position": _json_safe(state.position),
+                    "velocity": _json_safe(state.velocity),
+                    "effort": _json_safe(state.effort),
                 },
                 ensure_ascii=False,
                 indent=2,
@@ -72,7 +81,7 @@ def _home(config_path: str | None, *, timeout: float, fake: bool = False) -> int
             json.dumps(
                 {
                     "name": state.name,
-                    "position": state.position,
+                    "position": _json_safe(state.position),
                 },
                 ensure_ascii=False,
                 indent=2,

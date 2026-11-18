@@ -1,0 +1,83 @@
+{
+  "repository": "PhyAgentOS/adapter-robot-nexform-litearm",
+  "target": "stable/1.x",
+  "scope": "Normalize the legacy node to 1.0.0 and add versioned release tooling",
+  "release_line_unit_tests": {
+    "command": "python -m unittest discover -s scripts -p test_release_line.py -v",
+    "passed": 12
+  },
+  "workflow_validation": {
+    "tool": "actionlint 1.7.12",
+    "result": "passed"
+  },
+  "distribution_checks": {
+    "result": "passed",
+    "artifacts": [
+      {
+        "name": "robot_litearm-1.0.0-py3-none-any.whl",
+        "size": 32614,
+        "sha256": "ca7d9a7428948a4d3663224968df807a12005f0819d95ca26b69a557b3d8ad86"
+      },
+      {
+        "name": "robot_litearm-1.0.0.tar.gz",
+        "size": 31633,
+        "sha256": "c015a983fb29697368d43cd37c3438f9caff9bc8dc52fc984ca271869a268b0b"
+      }
+    ]
+  },
+  "source_profiles": [
+    {
+      "repo": "PhyAgentOS/adapter-robot-nexform-litearm",
+      "line": "1.x",
+      "version": "1.0.0",
+      "forge_majors": [
+        1
+      ],
+      "dora_versions": [
+        [
+          0,
+          4
+        ]
+      ],
+      "kind": "python",
+      "ready": true
+    },
+    {
+      "repo": "PhyAgentOS/adapter-robot-nexform-litearm",
+      "line": "2.x",
+      "version": "2.0.0",
+      "forge_majors": [
+        2
+      ],
+      "dora_versions": [
+        [
+          1,
+          0
+        ]
+      ],
+      "kind": "python",
+      "ready": true
+    }
+  ],
+  "dora_run": {
+    "single_node": {
+      "status": "not-run",
+      "reason": "This change verifies release tooling and version metadata; no current node runtime acceptance is claimed."
+    },
+    "gateway_chain": {
+      "status": "not-run",
+      "reason": "Fresh integration acceptance remains required; every such chain must include adapter-forge-gateway from the same Forge line."
+    }
+  },
+  "linux_binary_release_build": "not-run in this change; existing binary workflow checks are preserved",
+  "hardware_model_sustained_rollback_acceptance": "pending",
+  "published_tags_releases_modified": false,
+  "gitlab_sync": false,
+  "legacy_version": {
+    "before": "0.1.0",
+    "after": "1.0.0",
+    "forge_major": 1,
+    "dora": "0.4.x"
+  },
+  "locked_dependency_preservation": "existing lock entries unchanged except local project versions"
+}

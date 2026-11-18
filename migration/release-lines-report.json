@@ -15,16 +15,15 @@
     "artifacts": [
       {
         "name": "robot_litearm-2.0.0-py3-none-any.whl",
-        "size": 38603,
-        "sha256": "71623dec15dc59c7a48aa9c79e7926ea9f6ce5b1b1d102201859be494f4da2f2"
+        "size": 38603
       },
       {
         "name": "robot_litearm-2.0.0.tar.gz",
-        "size": 40237,
-        "sha256": "8e84f13ad66b038f87d2be9488afb2d3c037ca9501e4dd5d0691077ef7452de7"
+        "size": 40237
       }
     ]
   },
+  "source_profile_scope": "Local candidate worktrees; proposed maintenance changes are not deployed or merged yet. Full checksums and raw logs remain in the local workspace.",
   "source_profiles": [
     {
       "repo": "PhyAgentOS/adapter-robot-nexform-litearm",

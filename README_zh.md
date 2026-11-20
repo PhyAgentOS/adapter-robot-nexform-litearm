@@ -1,5 +1,7 @@
 LiteArm Robot Adapter 把 NexForm LiteArm 7 轴机械臂与 LiteGrip 夹爪接入 PhyAgentOS 的 Forge / Dora 运行时，供机器人应用开发者在仿真和真机上复用同一套驱动、示例与遥操参数。
 
+补丁版 `2.0.1` 打包 `2.0.0` 发布后主线已有的 bridge、codec、driver 和 node 修复。 本版仍对应 Forge 2.x / Dora 1.x。相对 1.x，Forge 2.x 属于 **BREAKING CHANGE**；对接节点前须对齐 Forge 库、节点及 Dora 版本。
+
 [English](README.md) | [简体中文](README_zh.md)
 
 # LiteArm Robot Adapter

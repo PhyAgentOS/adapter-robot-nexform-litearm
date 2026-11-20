@@ -1,5 +1,7 @@
 # adapter-robot-nexform-litearm
 
+Patch `2.0.1` packages the current main-branch bridge, codec, driver and node fixes after `2.0.0`. This remains a Forge 2.x / Dora 1.x release. Forge 2.x is a **BREAKING CHANGE** from 1.x; align Forge libraries, nodes and Dora before connecting nodes.
+
 [English](README.md) | [简体中文](README_zh.md)
 
 ## BREAKING CHANGE: Forge 2.x / Dora 1.x migration

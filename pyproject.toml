@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "robot-litearm"
-version = "2.0.0"
+version = "2.0.1"
 description = "Forge/Dora robot adapter for the NexForm LiteArm 7-DOF arm and LiteGrip gripper."
 readme = "README.md"
 requires-python = ">=3.12"

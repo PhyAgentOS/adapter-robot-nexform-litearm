@@ -1,3 +1,5 @@
+[简体中文](README_zh.md)
+
 LiteArm Robot Adapter 把 NexForm LiteArm 7 轴机械臂与 LiteGrip 夹爪接入 PhyAgentOS 的 Forge / Dora 运行时，供机器人应用开发者在仿真和真机上复用同一套驱动、示例与遥操参数。
 
 # LiteArm Robot Adapter
@@ -301,3 +303,7 @@ rsync -a --exclude .git --exclude .venv --exclude dist "$PWD/" "$WORKSPACE/robot
 | VR 参数 | `lite-vr/litearm-vr-teleop/teleop/config/teleop.yaml` | 2026-11-05 |
 | SDK | `nexform-tech/litearm-python` | `v1.3.0`、直连 STM32 |
 | 夹爪 SDK | `nexform-tech/litegrip-python` | `v1.2.1`、factory calibration |
+
+## CI policy
+
+Automated dependency vulnerability audits are not maintained as CI or merge gates on this branch. Existing tests, builds, and other checks remain in place. Removing the audit gate does not change locked dependencies or resolve previously reported vulnerabilities.
